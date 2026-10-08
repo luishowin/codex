@@ -1,0 +1,147 @@
+/* Safari 18 chrome: unified field, tab strip, sidebar, sheets, overview */
+
+/* the tab strip only exists when there is more than one tab */
+.window.app-safari .sf-tabs { height: 36px; align-items: center; gap: 2px; padding: 0 8px; }
+.window.app-safari .sf-tabs.solo { display: none; }
+.window.app-safari .sf-tab { height: 28px; border-radius: 7px; margin: 0; }
+.window.app-safari .sf-tab.on { background: var(--control); box-shadow: inset 0 0 0 .5px var(--control-border), 0 1px 2px rgba(0,0,0,.09); }
+.window.app-safari .sf-tab.drag { opacity: .78; z-index: 5; }
+.window.app-safari .sf-tab .fav { overflow: hidden; }
+.window.app-safari .sf-tab .fav svg { width: 14px; height: 14px; display: block; }
+.window.app-safari .sf-newtab { margin: 0; }
+
+/* the bookmarks bar: a row of favorites under the tab strip, ⇧⌘B toggles it */
+.window.app-safari .sf-bbar {
+  display: flex; align-items: center; gap: 3px; padding: 3px 10px; flex: none;
+  overflow-x: auto; scrollbar-width: none; border-bottom: .5px solid var(--sep);
+}
+.window.app-safari .sf-bbar::-webkit-scrollbar { display: none; }
+
+/* the body splits into sidebar + page */
+.window.app-safari .sf-body { flex: 1; min-height: 0; display: flex; }
+.window.app-safari .sf-sidebar {
+  width: 0; flex: none; overflow: hidden; display: none; flex-direction: column;
+  background: var(--sidebar); border-right: .5px solid var(--sep);
+}
+.window.app-safari .sf-sidebar.open { display: flex; width: 232px; }
+.window.app-safari .sf-side-seg { margin: 8px; }
+.window.app-safari .sf-side-seg button { flex: 1; min-width: 0; padding: 0 6px; font-size: 11px; }
+.window.app-safari .sf-side-list { flex: 1; min-height: 0; overflow: auto; padding: 0 6px 10px; }
+.window.app-safari .sf-side-row { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; }
+.window.app-safari .sf-side-row:hover { background: var(--hover); }
+.window.app-safari .sf-side-ico { width: 16px; height: 16px; flex: none; display: grid; place-items: center; }
+.window.app-safari .sf-side-ico svg { width: 100%; height: 100%; display: block; }
+.window.app-safari .sf-side-tx { flex: 1; min-width: 0; }
+.window.app-safari .sf-side-tx b { display: block; font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.window.app-safari .sf-side-tx span { display: block; font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.window.app-safari .sf-side-x { width: 16px; height: 16px; flex: none; border-radius: 4px; display: grid; place-items: center; color: var(--text-3); opacity: 0; font-size: 13px; }
+.window.app-safari .sf-side-row:hover .sf-side-x { opacity: .85; }
+.window.app-safari .sf-side-x:hover { background: var(--active); }
+.window.app-safari .sf-side-empty { padding: 18px 10px; text-align: center; color: var(--text-3); font-size: 12px; }
+.window.app-safari .sf-rename { width: 100%; height: 19px; font-size: 12px; padding: 0 3px; border: .5px solid var(--accent); border-radius: 3px; background: var(--paper); color: var(--text); outline: none; }
+
+/* the suggestion drop-down under the address field */
+.window.app-safari .sf-sugs {
+  position: absolute; z-index: 60; min-width: 280px; padding: 4px;
+  background: var(--panel); backdrop-filter: blur(36px) saturate(190%); -webkit-backdrop-filter: blur(36px) saturate(190%);
+  border: .5px solid var(--field-border); border-radius: 9px;
+  box-shadow: 0 12px 34px rgba(0,0,0,.30), 0 1px 2px rgba(0,0,0,.18);
+  font-size: 13px; max-height: 340px; overflow: auto;
+}
+.window.app-safari .sf-sug-head { font-size: 11px; font-weight: 600; color: var(--text-3); padding: 6px 9px 2px; }
+.window.app-safari .sf-sug { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 9px; border-radius: 5px; color: var(--text); }
+.window.app-safari .sf-sug .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.window.app-safari .sf-sug .u { color: var(--text-3); font-size: 11.5px; flex: none; }
+.window.app-safari .sf-sug.sel { background: var(--accent); color: var(--accent-contrast); }
+.window.app-safari .sf-sug.sel .u { color: rgba(255,255,255,.78); }
+.window.app-safari .sf-sug-ico { width: 15px; height: 15px; flex: none; display: grid; place-items: center; color: var(--text-2); overflow: hidden; border-radius: 3px; }
+.window.app-safari .sf-sug-ico svg { width: 15px; height: 15px; display: block; }
+.window.app-safari .sf-sug.sel .sf-sug-ico { color: inherit; }
+
+/* the reload / stop control inside the field, and the thin load progress line */
+.window.app-safari .sf-field-btn {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  width: 20px; height: 20px; display: grid; place-items: center; border-radius: 4px; color: var(--text-3);
+}
+.window.app-safari .sf-field-btn:hover { background: var(--hover); color: var(--text); }
+.window.app-safari .sf-field-btn .glyph { width: 12px; height: 12px; }
+.window.app-safari .sf-progress {
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 2.5px; z-index: 6;
+  background: var(--accent); width: 0; border-radius: 0 2px 2px 0;
+  transition: width .55s cubic-bezier(.2,.7,.3,1), opacity .3s;
+  pointer-events: none;
+}
+.window.app-safari .sf-progress.done { opacity: 0; }
+
+/* the add-bookmark / confirm sheet that drops from the toolbar */
+.window.app-safari .sf-sheet {
+  position: absolute; left: 50%; top: 0; z-index: 40; width: 330px;
+  transform: translateX(-50%) translateY(-102%);
+  background: var(--win-solid); border: .5px solid var(--field-border); border-top: 0;
+  border-radius: 0 0 10px 10px; box-shadow: 0 16px 38px rgba(0,0,0,.30);
+  padding: 14px; transition: transform .24s var(--spring, cubic-bezier(.32,.72,0,1));
+}
+.window.app-safari .sf-sheet.in { transform: translateX(-50%) translateY(0); }
+.window.app-safari .sf-sheet-title { font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 10px; }
+.window.app-safari .sf-sheet-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.window.app-safari .sf-sheet-row > span { width: 52px; flex: none; font-size: 12px; color: var(--text-2); text-align: right; }
+.window.app-safari .sf-name {
+  flex: 1; height: 23px; padding: 0 7px; font-size: 12px; color: var(--text);
+  background: var(--field); border: .5px solid var(--field-border); border-radius: 5px; outline: none;
+}
+.window.app-safari .sf-name:focus { border-color: color-mix(in srgb, var(--accent) 65%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.window.app-safari .sf-sheet-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 3px; }
+
+/* ⇧⌘\ tab overview: a grid of live tab cards over the page */
+.window.app-safari .sf-ov { position: absolute; inset: 0; z-index: 30; overflow: auto; background: var(--paper); color: var(--text); }
+.window.app-safari .sf-ov-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px 8px; font-size: 13px; font-weight: 600; }
+.window.app-safari .sf-ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px 18px; padding: 8px 24px 34px; }
+.window.app-safari .sf-ov-card { position: relative; text-align: left; }
+.window.app-safari .sf-ov-thumb {
+  height: 118px; border-radius: 9px; display: grid; place-items: center; margin-bottom: 6px;
+  background: var(--control); border: .5px solid var(--field-border); box-shadow: 0 1px 4px rgba(0,0,0,.10);
+}
+.window.app-safari .sf-ov-card.on .sf-ov-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+.window.app-safari .sf-ov-fav { width: 42px; height: 42px; }
+.window.app-safari .sf-ov-fav svg { width: 100%; height: 100%; display: block; }
+.window.app-safari .sf-ov-t { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.window.app-safari .sf-ov-u { font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.window.app-safari .sf-ov-x {
+  position: absolute; top: 6px; left: 6px; z-index: 2; width: 18px; height: 18px; border-radius: 50%;
+  display: none; place-items: center; background: rgba(60,60,67,.72); color: #fff; font-size: 12px; line-height: 1;
+}
+.window.app-safari .sf-ov-card:hover .sf-ov-x { display: grid; }
+
+/* the ⌘Y history page */
+.window.app-safari .sf-hist { position: absolute; inset: 0; overflow: auto; background: var(--paper); color: var(--text); }
+.window.app-safari .sf-hist-head {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 14px;
+  padding: 18px 28px 12px; background: var(--paper); border-bottom: .5px solid var(--sep);
+}
+.window.app-safari .sf-hist-head h1 { flex: 1; font-size: 22px; font-weight: 700; }
+.window.app-safari .sf-hist-head .search-field { width: 200px; }
+.window.app-safari .sf-hist-list { max-width: 820px; margin: 0 auto; padding: 6px 20px 44px; }
+.window.app-safari .sf-hist-day { padding: 15px 8px 4px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.window.app-safari .sf-hist-row { display: flex; align-items: center; gap: 9px; padding: 4px 8px; border-radius: 6px; }
+.window.app-safari .sf-hist-row:hover { background: var(--hover); }
+.window.app-safari .sf-hist-row .sf-side-tx b { font-weight: 500; }
+.window.app-safari .sf-hist-row .sf-side-tx span { font-size: 11px; color: var(--text-3); }
+.window.app-safari .sf-hist-time { flex: none; font-size: 11px; color: var(--text-3); }
+
+/* error pages: flat gray, centered, exactly the shape Safari draws */
+.window.app-safari .sf-err { background: #ececef; }
+.window.app-safari .sf-err h2 { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
+.window.app-safari .sf-err p { max-width: 420px; }
+.window.app-safari .sf-err p.sub { font-size: 12px; margin-top: 8px; }
+.window.app-safari .sf-err .btn { border-radius: 6px; }
+.window.app-safari .glyph.big { width: 42px; height: 42px; }
+html[data-appearance="dark"] .window.app-safari .sf-err { background: #1c1c1e; }
+html[data-appearance="dark"] .window.app-safari .sf-err p { color: rgba(235,235,240,.62); }
+
+/* start page + favicon bits that need dark variants or small sizes */
+.window.app-safari .sf-favs.small .tile { width: 48px; height: 48px; border-radius: 11px; margin-bottom: 5px; }
+html[data-appearance="dark"] .window.app-safari .sf-fav span { color: var(--text-2); }
+html[data-appearance="dark"] .window.app-safari .sf-fav .tile { box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+html[data-appearance="dark"] .window.app-safari .sf-report { background: var(--control); }
+html[data-appearance="dark"] .window.app-safari .sf-start .sub { color: var(--text-2); }
+.window.app-safari .sf-read-row { cursor: default; }

@@ -1,0 +1,59 @@
+/* w8: spaces, Mission Control extras, genie strips, true fullscreen,
+   show-desktop, app switcher polish. */
+
+/* ── Mission Control: spaces strip ─────────────────────────────────── */
+.mc-minis {
+  position: absolute; inset: 0 0 14px 0; overflow: hidden;
+  border-radius: 7px 7px 0 0;
+}
+.mc-mini {
+  position: absolute; border-radius: 2px;
+  background: rgba(255,255,255,.92);
+  border-top: 2px solid rgba(200,200,204,.9);
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+html[data-appearance="dark"] .mc-mini { background: rgba(58,58,62,.94); }
+.mc-x {
+  position: absolute; top: -6px; left: -6px; width: 17px; height: 17px;
+  border-radius: 50%; background: rgba(30,30,34,.9); color: #fff;
+  font-size: 11px; line-height: 1; display: none; place-items: center;
+  z-index: 4; box-shadow: 0 1px 5px rgba(0,0,0,.5);
+}
+.mc-space:hover .mc-x { display: grid; }
+.mc-space.over { outline: 2.5px solid #0a84ff; outline-offset: 1px; }
+.mc-proxy[draggable="true"] { cursor: grab; }
+.mc-label .mic { display: inline-flex; width: 15px; height: 15px; border-radius: 4px; overflow: hidden; }
+.mc-label .mic svg { width: 100%; height: 100%; }
+
+/* ── Genie effect: clipped strip clones funnelling into the Dock ───── */
+.genie-host { position: absolute; pointer-events: none; }
+.genie-strip {
+  position: absolute; left: 0; right: 0; overflow: hidden;
+  transform-origin: center; will-change: transform, opacity;
+  contain: layout style;
+}
+.genie-strip .window {
+  animation: none !important; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+
+/* ── show desktop (F11): windows parked off their nearest edge ─────── */
+.window.desktop-away { pointer-events: none; }
+
+/* ── true fullscreen space: dock gone, chrome slides back on a top hover ─ */
+html.has-fs #dock { display: none; }
+html.has-fs #menubar { transform: translateY(-100%); transition: transform .22s ease; }
+html.has-fs.fs-peek #menubar { transform: none; }
+.window.fullscreen .titlebar,
+.window.fullscreen .sb-top {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 60;
+  transform: translateY(-110%); transition: transform .24s var(--ease);
+  background: var(--toolbar);
+}
+.window.fullscreen .sb-host { position: relative; }
+.window.fullscreen .sb-top { right: auto; width: 200px; }
+html.has-fs.fs-peek .window.fullscreen .titlebar,
+html.has-fs.fs-peek .window.fullscreen .sb-top { transform: none; }
+
+/* ── app switcher: the real panel floats centred ───────────────────── */
+#app-switcher { align-items: center; justify-content: center; padding-bottom: 0; }

@@ -1,0 +1,149 @@
+/* Finder depth: scope bar, preview pane, view options, tags, marquee,
+   sortable/resizable list headers, gallery filmstrip, drop targets.
+   apps.css owns the base .fx-* styles; this file layers the rest. */
+
+/* ── sidebar ───────────────────────────────────────────────────────── */
+.window.app-finder .sb-item { height: 24px; font-size: 13px; width: 100%; text-align: left; }
+.window.app-finder .sb-item .fx-tag-dot { width: 11px; height: 11px; flex: none; }
+.window.app-finder .sb-item.drop { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.window.app-finder .sidebar.drop { box-shadow: inset 0 0 0 1.5px var(--accent); }
+/* eject affordance on removable sidebar volumes, on hover like the real Finder */
+.window.app-finder .fx-eject { margin-left: auto; width: 13px; height: 13px; color: var(--text-3); opacity: 0; flex: none; }
+.window.app-finder .sb-item:hover .fx-eject { opacity: 1; }
+.window.app-finder .fx-eject svg { width: 12px; height: 12px; display: block; }
+.window.app-finder .fx-eject:hover { color: var(--text); }
+
+/* a non-focused Finder dims its selection the way macOS does */
+.window.app-finder.inactive .sb-item.on { background: rgba(0,0,0,.09); color: var(--text); }
+.window.app-finder.inactive .fx-row.sel,
+.window.app-finder.inactive .fx-col-row.sel,
+.window.app-finder.inactive .fx-thumb.sel { background: rgba(0,0,0,.16); color: var(--text); }
+.window.app-finder.inactive .fx-item.sel .nm { background: rgba(0,0,0,.32); color: var(--text); }
+html[data-appearance="dark"] .window.app-finder.inactive .sb-item.on { background: rgba(255,255,255,.10); }
+html[data-appearance="dark"] .window.app-finder.inactive .fx-row.sel,
+html[data-appearance="dark"] .window.app-finder.inactive .fx-col-row.sel,
+html[data-appearance="dark"] .window.app-finder.inactive .fx-thumb.sel { background: rgba(255,255,255,.16); color: var(--text); }
+html[data-appearance="dark"] .window.app-finder.inactive .fx-item.sel .nm { background: rgba(255,255,255,.22); color: var(--text); }
+
+/* ── content layout: files + preview pane ──────────────────────────── */
+.window.app-finder .fx-content { flex: 1; min-height: 0; display: flex; }
+.window.app-finder .fx-files { position: relative; }
+.window.app-finder .fx-side {
+  width: 220px; flex: none; min-height: 0; overflow: auto;
+  border-left: .5px solid var(--sep); background: var(--surface-2);
+  padding: 18px 14px; text-align: center;
+}
+.window.app-finder .fx-side-ic { width: 96px; height: 96px; margin: 4px auto 10px; }
+.window.app-finder .fx-side-ic svg { width: 100%; height: 100%; filter: drop-shadow(0 3px 5px rgba(0,0,0,.2)); }
+.window.app-finder .fx-side-name { font-size: 13px; display: block; overflow-wrap: anywhere; }
+.window.app-finder .fx-side-kind { font-size: 11px; color: var(--text-3); margin-bottom: 12px; }
+.window.app-finder .fx-side-facts { text-align: left; font-size: 11px; border-top: .5px solid var(--sep); padding-top: 8px; }
+.window.app-finder .fx-side-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.window.app-finder .fx-side-row span:last-child { color: var(--text-2); text-align: right; }
+
+/* ── tag dots on items ─────────────────────────────────────────────── */
+.fx-tag-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 .5px rgba(0,0,0,.14); flex: none; }
+.window.app-finder .fx-item > .fx-tag-dot { margin-top: -1px; }
+.window.app-finder .fx-row .fx-tag-dot { margin-left: 2px; }
+.window.app-finder .fx-col-row .fx-tag-dot { margin-left: auto; }
+.window.app-finder .fx-col-row .fx-tag-dot + .arrow { margin-left: 4px; }
+
+/* ── search scope bar ──────────────────────────────────────────────── */
+.window.app-finder .fx-scope {
+  flex: none; display: flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 12px; font-size: 11.5px; color: var(--text-2);
+  border-bottom: .5px solid var(--sep); background: var(--surface-2);
+}
+.window.app-finder .fx-scope-btn { padding: 2px 10px; border-radius: 6px; color: var(--text-2); font-size: 11.5px; }
+.window.app-finder .fx-scope-btn.on { background: var(--control); color: var(--text); box-shadow: 0 .5px 1.5px rgba(0,0,0,.15), inset 0 0 0 .5px var(--field-border); }
+
+/* ── icon view: size slider + label position + marquee ─────────────── */
+.window.app-finder .fx-grid { grid-template-columns: repeat(auto-fill, minmax(calc(var(--fx-icon, 62px) + 44px), 1fr)); }
+.window.app-finder .fx-item .ic { width: var(--fx-icon, 62px); height: var(--fx-icon, 62px); }
+.window.app-finder .fx-grid.labels-right { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.window.app-finder .fx-grid.labels-right .fx-item { flex-direction: row; align-items: center; text-align: left; gap: 8px; padding: 5px 8px; }
+.window.app-finder .fx-grid.labels-right .fx-item .ic { width: calc(var(--fx-icon, 62px) * .6); height: calc(var(--fx-icon, 62px) * .6); flex: none; }
+.window.app-finder .fx-grid.labels-right .fx-item .nm { -webkit-line-clamp: 1; }
+.fx-marquee { position: absolute; z-index: 6; border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent); background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 2px; pointer-events: none; }
+
+/* ── list view: sortable header + resizable columns ────────────────── */
+.window.app-finder .fx-head {
+  display: grid; grid-template-columns: var(--fx-cols, minmax(180px, 2fr) 90px 110px 130px);
+  gap: 8px; padding: 0 7px; font-size: 11px; color: var(--text-3);
+  border-bottom: .5px solid var(--sep); position: sticky; top: -12px; background: var(--win-solid); z-index: 2;
+}
+.window.app-finder .fx-list .fx-row { grid-template-columns: var(--fx-cols, minmax(180px, 2fr) 90px 110px 130px); }
+.window.app-finder .fx-hcell { position: relative; display: flex; align-items: center; height: 22px; padding: 0 2px; text-align: left; color: inherit; overflow: hidden; white-space: nowrap; }
+.window.app-finder .fx-hcell.on { color: var(--text); font-weight: 600; }
+.window.app-finder .fx-sort-arrow { font-size: 7px; margin-left: 4px; color: var(--text-2); }
+.window.app-finder .fx-rez { position: absolute; right: -5px; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 3; }
+.window.app-finder .fx-rez::after { content: ""; position: absolute; left: 4px; top: 3px; bottom: 3px; width: 1px; background: var(--sep); }
+.window.app-finder .fx-rez:hover::after { background: var(--text-3); }
+.window.app-finder .fx-row.drop { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+
+/* ── column view ───────────────────────────────────────────────────── */
+.window.app-finder .fx-col-row { cursor: default; }
+.window.app-finder .fx-col-preview { border-right: none; min-width: 150px; }
+.window.app-finder .fx-col-preview svg { width: 100%; height: 100%; }
+
+/* ── gallery view: filmstrip ───────────────────────────────────────── */
+.window.app-finder .fx-film { display: flex; flex-direction: column; height: 100%; min-height: 0; margin: -12px; }
+.window.app-finder .fx-hero { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 18px 18px 8px; }
+.window.app-finder .fx-hero-ic { width: min(420px, 86%); flex: 1; min-height: 0; aspect-ratio: 5/4; display: grid; place-items: center; }
+.window.app-finder .fx-hero-ic svg { width: 100%; height: 100%; object-fit: contain; }
+.window.app-finder .fx-hero-meta { text-align: center; flex: none; }
+.window.app-finder .fx-hero-meta b { display: block; font-size: 12.5px; }
+.window.app-finder .fx-hero-meta span { font-size: 11px; color: var(--text-3); }
+.window.app-finder .fx-strip { flex: none; display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px 12px; border-top: .5px solid var(--sep); background: var(--surface-2); }
+.window.app-finder .fx-thumb { flex: none; width: 104px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border-radius: 7px; }
+.window.app-finder .fx-thumb .ic { width: 88px; height: 62px; display: grid; place-items: center; }
+.window.app-finder .fx-thumb .ic svg { max-width: 100%; max-height: 100%; width: 100%; height: 100%; }
+.window.app-finder .fx-thumb .nm { font-size: 10.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 4px; border-radius: 4px; }
+.window.app-finder .fx-thumb:hover { background: var(--hover); }
+.window.app-finder .fx-thumb.sel { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.window.app-finder .fx-thumb.sel .nm { background: var(--accent); color: var(--accent-contrast); }
+
+/* ── View Options floating panel (⌘J) ──────────────────────────────── */
+.window.app-finder .fx-vopts {
+  position: absolute; top: 8px; right: 12px; z-index: 25; width: 240px;
+  background: var(--panel); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: .5px solid var(--field-border); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 10px 14px 14px; font-size: 11.5px; animation: pop .12s var(--ease);
+}
+.window.app-finder .fx-vopts-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.window.app-finder .fx-vopts-head b { font-size: 12px; }
+.window.app-finder .fx-vopts-head .tb-btn { min-width: 20px; height: 20px; padding: 0 4px; }
+.window.app-finder .vo-row { margin-top: 10px; }
+.window.app-finder .vo-row label { display: block; color: var(--text-2); margin-bottom: 5px; }
+.window.app-finder .vo-row .seg { display: flex; width: 100%; }
+.window.app-finder .vo-row .seg button { flex: 1; }
+.window.app-finder .fx-vo-sel {
+  width: 100%; height: 23px; border-radius: 6px; border: 1px solid var(--field-border);
+  background: var(--field); color: var(--text); font-size: 11.5px; padding: 0 6px; outline: none;
+}
+
+/* ── Get Info additions ────────────────────────────────────────────── */
+.window.app-finder.info-window .info-name {
+  width: 100%; border: 0; background: none; outline: none; padding: 1px 3px; margin: -1px -3px 2px;
+  font: inherit; font-weight: 700; font-size: 12.5px; color: var(--text); border-radius: 4px;
+  display: block; overflow-wrap: anywhere;
+}
+.window.app-finder.info-window .info-name:focus { background: var(--field); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+.window.app-finder.info-window .info-tag-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 3px 0 5px; }
+.window.app-finder.info-window .info-lab { color: var(--text-3); width: 62px; text-align: right; flex: none; }
+.window.app-finder.info-window .info-tags { display: flex; gap: 7px; align-items: center; }
+.window.app-finder.info-window .info-tag { width: 13px; height: 13px; border-radius: 50%; padding: 0; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.15); }
+.window.app-finder.info-window .info-tag.on { box-shadow: 0 0 0 2.5px var(--win-solid), 0 0 0 4px var(--accent); }
+.window.app-finder.info-window .info-sel {
+  flex: 1; min-width: 0; height: 22px; border-radius: 6px; border: 1px solid var(--field-border);
+  background: var(--field); color: var(--text); font-size: 11px; padding: 0 5px; outline: none;
+}
+
+/* ── Quick Look additions ──────────────────────────────────────────── */
+.window.app-finder .ql-body { min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.window.app-finder .ql-image svg { object-fit: cover; }
+html[data-appearance="dark"] .window.app-finder .quicklook { background: var(--win-solid); box-shadow: 0 24px 70px rgba(0,0,0,.7); }
+html[data-appearance="dark"] .window.app-finder .ql-text { color: var(--text); }
+
+/* the dock's Trash can lights up when files hover over it */
+#dock .dock-item.drop .app-icon { filter: brightness(1.35) drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 60%, transparent)); }

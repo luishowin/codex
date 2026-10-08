@@ -1,0 +1,118 @@
+/* System Settings — pane chrome, plus the shell-side effects this pane owns:
+   dock position/hiding, pointer size, scroll bars, window tint, highlight. */
+
+/* ── settings window ───────────────────────────────────────────────── */
+.window.app-settings .st-card-label { font-size: 12px; color: var(--text-2); margin-bottom: 10px; }
+.window.app-settings .st-label { font-size: 11.5px; font-weight: 600; color: var(--text-2); margin: -6px 4px 7px; }
+.window.app-settings .st-hero-row { display: flex; align-items: center; gap: 12px; padding: 3px 0 10px; }
+.window.app-settings .st-hero-row:last-child { padding-bottom: 2px; }
+.window.app-settings .set-icon.lg { width: 42px; height: 42px; border-radius: 9px; flex: none; }
+.window.app-settings .set-icon.lg .glyph { width: 24px; height: 24px; }
+.window.app-settings .st-on { color: var(--text-2); }
+
+/* rows that navigate into a sub-pane */
+.window.app-settings .st-link { width: 100%; text-align: left; border-radius: 6px; }
+.window.app-settings .st-link:hover { background: var(--hover); }
+
+/* software update: spinner, then the up-to-date card */
+.window.app-settings .st-checking { display: flex; align-items: center; gap: 9px; color: var(--text-2); font-size: 12.5px; }
+.window.app-settings .st-spin {
+  width: 13px; height: 13px; border-radius: 50%; flex: none;
+  border: 2px solid var(--text-3); border-top-color: var(--accent);
+  animation: st-rot .7s linear infinite;
+}
+@keyframes st-rot { to { transform: rotate(360deg); } }
+.window.app-settings .st-uptodate { display: flex; align-items: center; gap: 10px; }
+.window.app-settings .st-badge {
+  width: 20px; height: 20px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; background: #30d158; color: #fff;
+}
+.window.app-settings .st-badge .glyph { width: 11px; height: 11px; stroke-width: 2.6; }
+
+/* storage: the segmented capacity bar */
+.window.app-settings .st-storage-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 12.5px; margin-bottom: 8px; }
+.window.app-settings .st-storage-top span { color: var(--text-2); }
+.window.app-settings .st-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--field); margin-bottom: 10px; }
+.window.app-settings .st-bar i { display: block; height: 100%; transition: width .9s var(--ease); }
+.window.app-settings .st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
+
+/* date & time: a live clock in the picked zone */
+.window.app-settings .st-clock { font-size: 42px; font-weight: 600; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.window.app-settings .st-date { font-size: 13px; color: var(--text-2); }
+
+/* accents: the multicolor swatch is the rainbow; highlight dots too */
+.window.app-settings .accent.multi { background: conic-gradient(#ff375f, #ff9f0a, #ffd60a, #30d158, #0a84ff, #bf5af2, #ff375f); }
+.window.app-settings .accent.hl.cur { background: var(--accent); }
+.window.app-settings .accent.hl[data-hl="pink"] { background: #ff375f; }
+.window.app-settings .accent.hl[data-hl="orange"] { background: #ff9f0a; }
+.window.app-settings .accent.hl[data-hl="green"] { background: #30d158; }
+.window.app-settings .accent.hl[data-hl="graphite"] { background: #8e8e93; }
+
+/* sound: the alert names sit in a grid, each one previews itself */
+.window.app-settings .st-sounds { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; margin-bottom: 4px; }
+.window.app-settings .snd {
+  padding: 6px 4px; border-radius: 7px; text-align: center; font-size: 12px;
+  background: var(--field); border: 1px solid var(--field-border); color: var(--text);
+}
+.window.app-settings .snd:hover { background: var(--hover); }
+.window.app-settings .snd.on { background: var(--accent); border-color: transparent; color: var(--accent-contrast); }
+
+/* screen saver thumbnail and the real saver overlay */
+.window.app-settings .st-saver-thumb {
+  width: 56px; height: 36px; border-radius: 7px; background: #000; flex: none;
+  display: grid; place-items: center; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.18);
+}
+.window.app-settings .st-saver-thumb svg { width: 15px; height: 18px; fill: #e8e8ee; }
+#saver { position: absolute; inset: 0; z-index: 16000; background: #000; animation: fade .5s; overflow: hidden; }
+#saver .saver-logo {
+  position: absolute; left: 0; top: 0; width: 110px; height: 128px;
+  animation: saver-drift 24s ease-in-out infinite alternate;
+}
+#saver .saver-logo svg, #saver .saver-logo path { fill: #e8e8ee; width: 100%; height: 100%; }
+@keyframes saver-drift {
+  0% { transform: translate(5vw, 8vh); }
+  50% { transform: translate(70vw, 68vh); }
+  100% { transform: translate(24vw, 40vh); }
+}
+
+/* touch id enrolment: press the ring, the dots fill */
+.window.app-settings .st-fp-enroll { display: grid; place-items: center; gap: 8px; padding: 6px 0 4px; }
+.window.app-settings .fp-target {
+  width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--field); border: 1px solid var(--field-border); color: var(--text-2);
+  transition: transform .18s var(--ease), color .18s;
+}
+.window.app-settings .fp-target .glyph { width: 34px; height: 34px; }
+.window.app-settings .fp-target.tap { transform: scale(.92); color: var(--accent); }
+.window.app-settings .fp-dots { display: flex; gap: 7px; }
+.window.app-settings .fp-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--sep-strong); transition: background .18s; }
+.window.app-settings .fp-dots i.fill { background: var(--accent); }
+
+/* the change-password sheet */
+.window.app-settings .st-sheet-fields, .st-sheet-fields { display: grid; gap: 8px; margin: 10px 0 14px; }
+.st-err { min-height: 15px; font-size: 11.5px; color: #e33; }
+.window.app-settings .st-edit-row { display: flex; gap: 6px; align-items: center; }
+.window.app-settings .sb-avatar.big { width: 52px; height: 52px; font-size: 21px; }
+
+/* ── settings that act on the shell itself ─────────────────────────────
+   Dock position/autohide classes and the edge strip live in ext-shell.css
+   (dock.js toggles them); tint, --sb-row, --warmth and --low-power are
+   consumed by ext-desktop.css/base.css. Below is what this file owns. */
+
+/* pointer size swaps the arrow for a bigger one */
+html[data-pointer="large"] :where(body, body *:not(input):not(textarea):not([contenteditable="true"])) {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M6 1.5v16.4l4.3-3.8 2.8 5.6 2.4-1.2-2.7-5.4h6.1z' fill='%23000' stroke='%23fff' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E") 5 2, default;
+}
+html[data-pointer="xlarge"] :where(body, body *:not(input):not(textarea):not([contenteditable="true"])) {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 34 34'%3E%3Cpath d='M8 2v23l6.2-5.4 4 8 3.4-1.7-3.8-7.7h8.7z' fill='%23000' stroke='%23fff' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E") 7 3, default;
+}
+
+/* scroll bars: "When scrolling" keeps thumbs hidden until you hover the rail */
+html[data-scrollbars="When scrolling"] .scroll:not(:hover)::-webkit-scrollbar-thumb { background-color: transparent; }
+html[data-scrollbars="Always"] .scroll::-webkit-scrollbar-thumb { background-color: color-mix(in srgb, var(--text) 45%, transparent); }
+
+/* highlight colour for selections */
+html[data-hl="pink"] ::selection { background: rgba(255, 55, 95, .4); }
+html[data-hl="orange"] ::selection { background: rgba(255, 159, 10, .4); }
+html[data-hl="green"] ::selection { background: rgba(48, 209, 88, .4); }
+html[data-hl="graphite"] ::selection { background: rgba(142, 142, 147, .45); }

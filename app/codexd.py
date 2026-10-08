@@ -1,0 +1,290 @@
+#!/usr/bin/env python3
+"""codexd - the warm search daemon.
+
+Holds SQLite handles open so queries never pay connection or page-cache cost.
+Everything else in the system is a client of this: the Windows hotkey launcher,
+the browser UI, the Pi on the LAN, the TUI, and the MCP server.
+
+    codexd.py [--codex PATH ...] [--port 8765] [--host 127.0.0.1]
+
+Binds to loopback by default. Pass --host 0.0.0.0 to serve a Pi to the LAN --
+there is no authentication, so only do that on a network you trust.
+"""
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import mimetypes
+import socketserver
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from codex.art import ArtStore
+from codex.paths import art_db_path, codex_globs
+from codex.search import Searcher
+
+HERE = Path(__file__).resolve().parent
+WEB = HERE / "web"
+
+CODEXES: dict[str, Searcher] = {}
+META: dict[str, dict] = {}
+
+# The curated image layer, or None when art.db is absent. Every use is guarded;
+# a missing file costs nothing but the pictures.
+ART: ArtStore | None = None
+
+# Long-lived so its threads keep their per-codex SQLite handles warm. A pool
+# per request would pay thread creation on every keystroke, and throw away the
+# connection each thread had just opened.
+POOL = ThreadPoolExecutor(max_workers=16, thread_name_prefix="codex")
+
+
+def _size(path) -> int:
+    try:
+        return Path(path).stat().st_size
+    except OSError:
+        return 0
+
+
+def load_codexes(paths: list[str]) -> None:
+    for pattern in paths:
+        for p in sorted(glob.glob(pattern)):
+            if not p.endswith(".codex.db"):
+                continue
+            name = Path(p).name.replace(".codex.db", "")
+            try:
+                s = Searcher(p)
+            except Exception as exc:
+                print(f"  !! {name}: {exc}", file=sys.stderr)
+                continue
+            CODEXES[name] = s
+            row = dict(s.con.execute("SELECT key, value FROM codex_meta").fetchall())
+            n = s.con.execute("SELECT COUNT(*) FROM doc").fetchone()[0]
+            words = s.con.execute("SELECT SUM(word_count) FROM doc").fetchone()[0]
+            META[name] = {
+                "name": name, "docs": n, "deep": s.has_deep,
+                "title": row.get("title", name),
+                "source": row.get("source_zim", ""),
+                "date": row.get("zim_date", ""),
+                "built": row.get("built_at", ""),
+                "words": words or 0,
+                "zstd_level": row.get("zstd_level", ""),
+                "schema": row.get("schema_version", ""),
+                "adapter": row.get("adapter", ""),
+                "language": row.get("language", ""),
+                # Lets the UI show what the archive cost against what it came
+                # from -- the single most telling number about a codex.
+                "source_bytes": int(row.get("source_bytes") or 0),
+                "core_bytes": _size(s.core_path),
+                "deep_bytes": _size(s.deep_path) if s.deep_path else 0,
+            }
+            print(f"  loaded {name}: {n:,} docs, deep={s.has_deep}")
+
+
+def _search_one(name: str, q: str, limit: int, deep: bool) -> dict:
+    try:
+        page = CODEXES[name].search_page(q, limit=limit, deep=deep)
+    except Exception as exc:
+        print(f"  !! search {name}: {exc}", file=sys.stderr)
+        return {"hits": [], "total": 0, "capped": False}
+    for h in page["hits"]:
+        h["codex"] = name
+    page["codex"] = name
+    return page
+
+
+def search_all(q: str, limit: int, deep: bool, only: str | None) -> dict:
+    """Query every loaded codex and merge by score.
+
+    Fanned out rather than looped. Each codex is an independent SQLite file and
+    Searcher hands every thread its own connection, so there is nothing to
+    serialise -- and a sequential loop would make each added source lengthen
+    every query. One slow codex no longer delays the others, and no longer
+    blocks unrelated clients the way the old global lock did.
+    """
+    targets = [only] if only and only in CODEXES else list(CODEXES)
+    if len(targets) == 1:
+        pages = [_search_one(targets[0], q, limit, deep)]
+    else:
+        pages = list(POOL.map(lambda n: _search_one(n, q, limit, deep), targets))
+
+    hits = [h for p in pages for h in p["hits"]]
+    hits.sort(key=lambda h: -h["score"])
+    hits = hits[:limit]
+    # After the merge and the truncation, so this costs one dict lookup per hit
+    # actually being returned rather than per candidate considered.
+    if ART is not None:
+        ART.annotate(hits)
+    return {
+        "hits": hits,
+        # Sum of capped per-codex counts, so this is a floor once anything is
+        # capped -- which is exactly what "1,000+" claims.
+        "total": sum(p["total"] for p in pages),
+        "capped": any(p["capped"] for p in pages),
+        "per_codex": {p["codex"]: p["total"] for p in pages if p.get("codex")},
+    }
+
+
+class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, *a):  # quiet by default
+        pass
+
+    def _send(self, code: int, body: bytes, ctype: str,
+              cache: str = "no-store") -> None:
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", cache)
+        self.end_headers()
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionAbortedError):
+            pass
+
+    def _json(self, obj, code: int = 200) -> None:
+        self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+                   "application/json; charset=utf-8")
+
+    def do_GET(self) -> None:
+        u = urlparse(self.path)
+        qs = parse_qs(u.query)
+        one = lambda k, d=None: (qs.get(k) or [d])[0]
+
+        if u.path in ("/", "/index.html"):
+            return self._static("index.html")
+        if u.path.startswith("/static/"):
+            return self._static(u.path[len("/static/"):])
+        # Permalink for one document. Serves the same UI shell; the client
+        # reads ?codex=&id= on boot and opens the reader directly, so a
+        # middle- or Ctrl-clicked hit lands on the article in a new tab.
+        if u.path == "/read":
+            return self._static("index.html")
+
+        if u.path == "/api/health":
+            return self._json({"ok": True, "codexes": list(META.values()),
+                               "art": ART.stats() if ART else None})
+
+        # Image bytes. Content is immutable for a given slug -- a different
+        # picture means a rebuilt art.db -- so unlike the API responses above
+        # these are safe to cache hard.
+        if u.path.startswith("/art/"):
+            if ART is None:
+                return self._json({"error": "no art.db loaded"}, 404)
+            name = u.path[len("/art/"):]
+            kind = "hero"
+            if name.endswith(".thumb.webp"):
+                kind, slug = "thumb", name[:-len(".thumb.webp")]
+            elif name.endswith(".webp"):
+                slug = name[:-len(".webp")]
+            else:
+                return self._json({"error": "not found"}, 404)
+            body = ART.blob(slug, kind)
+            if body is None:
+                return self._json({"error": "not found"}, 404)
+            return self._send(200, body, "image/webp",
+                              cache="public, max-age=31536000, immutable")
+
+        # Credit metadata for one document. Kept off /api/doc so the document
+        # payload shape is unchanged; the reader fires this concurrently.
+        if u.path == "/api/art":
+            if ART is None:
+                return self._json({"error": "no art.db loaded"}, 404)
+            slug, name, doc_id = one("slug"), one("codex"), one("id")
+            rec = (ART.by_slug(slug) if slug
+                   else ART.for_doc(name, int(doc_id))
+                   if name and doc_id and doc_id.isdigit() else None)
+            if rec is None:
+                return self._json({"error": "not found"}, 404)
+            return self._json(rec)
+
+        if u.path == "/api/search":
+            q = one("q", "")
+            if not q:
+                return self._json({"hits": [], "ms": 0.0, "total": 0,
+                                   "capped": False, "per_codex": {}, "q": ""})
+            limit = max(1, min(int(one("n", "12")), 100))
+            deep = one("deep", "0") in ("1", "true", "yes")
+            t0 = time.perf_counter()
+            page = search_all(q, limit, deep, one("codex"))
+            page.update(ms=round((time.perf_counter() - t0) * 1000, 2),
+                        deep=deep, q=q)
+            return self._json(page)
+
+        if u.path == "/api/doc":
+            name, doc_id = one("codex"), one("id")
+            if name not in CODEXES or not doc_id:
+                return self._json({"error": "unknown codex or id"}, 404)
+            s = CODEXES[name]
+            doc = s.get(int(doc_id))
+            if doc is None:
+                return self._json({"error": "not found"}, 404)
+            doc["related"] = s.related(int(doc_id))
+            doc["codex"] = name
+            return self._json(doc)
+
+        return self._json({"error": "not found"}, 404)
+
+    def _static(self, rel: str) -> None:
+        target = (WEB / rel).resolve()
+        # Never serve outside the web directory.
+        if not str(target).startswith(str(WEB.resolve())) or not target.is_file():
+            return self._json({"error": "not found"}, 404)
+        ctype = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        if ctype.startswith("text/") or ctype.endswith(("javascript", "json")):
+            ctype += "; charset=utf-8"
+        self._send(200, target.read_bytes(), ctype)
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(prog="codexd")
+    p.add_argument("--codex", action="append", default=[],
+                   help="path or glob to a .codex.db (repeatable)")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--art", default=None,
+                   help="path to art.db; absent file simply disables images "
+                        f"(default: {art_db_path()})")
+    args = p.parse_args()
+
+    patterns = args.codex or codex_globs()
+    if args.art is None:
+        args.art = str(art_db_path())
+    print(f"codexd: loading from {patterns}")
+    load_codexes(patterns)
+    if not CODEXES:
+        print("no codexes loaded", file=sys.stderr)
+        return 1
+
+    global ART
+    ART = ArtStore.open_if_present(args.art)
+    if ART is None:
+        print(f"  no art.db at {args.art} (images disabled)")
+    else:
+        st = ART.stats()
+        print(f"  loaded art: {st['images']} images, {st['bindings']} bindings, "
+              f"{st['file_bytes'] / 1048576:.1f} MB")
+
+    socketserver.TCPServer.allow_reuse_address = True
+    srv = ThreadingHTTPServer((args.host, args.port), Handler)
+    srv.daemon_threads = True
+    total = sum(m["docs"] for m in META.values())
+    print(f"codexd: {len(CODEXES)} codex(es), {total:,} documents")
+    print(f"codexd: http://{args.host}:{args.port}/")
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        print("\ncodexd: stopping")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

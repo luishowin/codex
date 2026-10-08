@@ -1,0 +1,176 @@
+/* Notes: the goldenrod accent the real app wears, plus the parts apps.css
+   does not know about (the Aa popover, locking, tables, the sheet). */
+
+.app-notes { --accent: #e6b800; --accent-dark: #c7a000; }
+
+/* toolbar glyphs take the Notes tint the way macOS tints them */
+.app-notes .tb-tools .tb-btn { color: var(--accent-dark); }
+.app-notes .tb-right .tb-btn { color: var(--accent-dark); }
+.app-notes .tb-tools .tb-btn:disabled, .app-notes .tb-right .tb-btn:disabled { color: var(--text-3); opacity: .45; }
+.app-notes .tb-btn.fmt-aa { font-size: 13px; font-weight: 600; font-family: Georgia, 'Times New Roman', serif; padding: 0 6px; }
+html[data-appearance="dark"] .app-notes .tb-tools .tb-btn,
+html[data-appearance="dark"] .app-notes .tb-right .tb-btn { color: #ffd60a; }
+
+/* the note list: yellow while the list owns focus, gray once it does not */
+.app-notes .notes-mid .note-card.sel { background: rgba(120, 120, 128, .18); }
+.app-notes .notes-mid.lfocus .note-card.sel {
+  background: var(--accent);
+  --text: #1c1c1e; --text-2: rgba(0, 0, 0, .58); --text-3: rgba(0, 0, 0, .42);
+}
+.app-notes .note-card { cursor: default; }
+.app-notes .notes-mid.lfocus .note-card.sel .sub { color: var(--text-2); }
+.app-notes .note-tile.sel { outline: 2.5px solid rgba(120, 120, 128, .4); }
+.app-notes .notes-mid.lfocus .note-tile.sel { outline-color: var(--accent); }
+.app-notes .notes-year.pin-head { display: flex; align-items: center; gap: 4px; }
+.app-notes .notes-year.pin-head .glyph { width: 10px; height: 10px; color: var(--accent-dark); }
+
+/* the centered gray date above the note */
+.app-notes .note-doc .date { text-align: center; font-size: 11.5px; color: var(--text-3); margin-bottom: 10px; }
+
+/* checklist circles: accent fill, white check, and the text stays clean */
+.app-notes .note-check { display: flex; align-items: flex-start; gap: 8px; margin: 1px 0; }
+.app-notes .note-check .box {
+  width: 15px; height: 15px; margin-top: 3px; border-radius: 50%;
+  border: 1.5px solid var(--text-3); flex: none; display: grid; place-items: center; cursor: pointer;
+}
+.app-notes .note-check .box:hover { border-color: var(--accent-dark); }
+.app-notes .note-check.done .box { background: var(--accent); border-color: var(--accent); color: #fff; }
+.app-notes .note-check.done .box .glyph { width: 9px; height: 9px; stroke-width: 2.4; }
+.app-notes .note-check .txt { flex: 1; min-width: 0; font-size: 13.5px; line-height: 1.55; color: var(--text); outline: none; }
+.app-notes .note-check.done .txt { color: var(--text); text-decoration: none; }
+
+/* the note body is one contenteditable surface */
+.app-notes .note-body { outline: none; font-size: 13.5px; line-height: 1.55; color: var(--text); }
+.app-notes .note-body .ln { min-height: 1.4em; }
+.app-notes .note-body .ln[data-s="title"] { font-size: 24px; font-weight: 700; line-height: 1.3; margin: 2px 0 4px; }
+.app-notes .note-body .ln[data-s="heading"] { font-size: 17px; font-weight: 700; margin: 4px 0 1px; }
+.app-notes .note-body .ln[data-s="subheading"] { font-size: 14.5px; font-weight: 600; margin: 3px 0 1px; }
+.app-notes .note-body .ln[data-s="mono"] {
+  font-family: Menlo, 'SF Mono', monospace; font-size: 12.5px;
+  background: var(--field); border-radius: 6px; padding: 3px 8px; margin: 2px 0;
+}
+.app-notes .note-body .ln[data-s="quote"] {
+  border-left: 3px solid var(--accent); padding-left: 10px; color: var(--text-2); margin: 2px 0;
+}
+.app-notes .note-body .ln[data-s="bullets"],
+.app-notes .note-body .ln[data-s="dash"],
+.app-notes .note-body .ln[data-s="numbered"] { padding-left: 22px; position: relative; }
+.app-notes .note-body .ln[data-s="bullets"]::before { content: "•"; position: absolute; left: 7px; color: var(--text); }
+.app-notes .note-body .ln[data-s="dash"]::before { content: "–"; position: absolute; left: 7px; color: var(--text); }
+.app-notes .note-body { counter-reset: noteol; }
+.app-notes .note-body > *:not(.ln[data-s="numbered"]) { counter-reset: noteol; }
+.app-notes .note-body .ln[data-s="numbered"]::before {
+  counter-increment: noteol; content: counter(noteol) "."; position: absolute; left: 2px; width: 16px; text-align: right; color: var(--text);
+}
+
+/* real tables */
+.app-notes .note-table { border-collapse: collapse; margin: 6px 0; font-size: 13px; }
+.app-notes .note-table td { border: .5px solid var(--field-border); padding: 5px 9px; min-width: 96px; outline: none; }
+.app-notes .note-table tr.note-th td { font-weight: 600; background: var(--field); }
+
+/* photo attachments ride inside the note */
+.app-notes .note-img { width: 240px; max-width: 60%; border-radius: 10px; overflow: hidden; margin: 6px 0; box-shadow: 0 1px 4px rgba(0,0,0,.18); }
+.app-notes .note-img svg { display: block; width: 100%; height: auto; }
+
+/* Recently Deleted */
+.app-notes .notes-delbar {
+  flex: none; display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  border-bottom: .5px solid var(--sep); font-size: 11px; color: var(--text-3);
+}
+.app-notes .notes-delbar .delbar-txt { flex: 1; min-width: 0; }
+.app-notes .notes-delbar .del-all { font-size: 11.5px; color: #ff3b30; font-weight: 500; flex: none; }
+.app-notes .deleted-banner {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin: -8px 0 14px; padding: 7px 12px; border-radius: 8px;
+  background: var(--field); color: var(--text-2); font-size: 12px;
+}
+.app-notes .deleted-banner .btn { height: 22px; font-size: 11.5px; padding: 0 10px; }
+
+/* locked notes */
+.app-notes .note-lockwrap {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 46px 0 30px; color: var(--text);
+}
+.app-notes .note-lockwrap .lock-ic .glyph { width: 34px; height: 34px; color: var(--accent-dark); margin-bottom: 4px; }
+.app-notes .note-lockwrap b { font-size: 14px; }
+.app-notes .note-lockwrap .lock-sub { font-size: 12px; color: var(--text-2); }
+.app-notes .note-lockwrap .lock-row { display: flex; gap: 7px; margin-top: 10px; }
+.app-notes .lock-pw {
+  height: 26px; width: 190px; border: .5px solid var(--field-border); border-radius: 6px;
+  background: var(--field); color: var(--text); font-size: 12.5px; padding: 0 9px; outline: none;
+}
+.app-notes .lock-pw:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.app-notes .note-lockwrap.shake { animation: notes-shake .45s; }
+@keyframes notes-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-9px); } 40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); } 80% { transform: translateX(4px); }
+}
+.app-notes .lock-mini .glyph { width: 10px; height: 10px; color: var(--text-3); vertical-align: -1px; }
+
+/* the Aa format popover, hanging under its button */
+.notes-fmt {
+  position: fixed; z-index: 6000; width: 218px; padding: 6px;
+  background: var(--menu-bg, rgba(246,246,248,.94)); -webkit-backdrop-filter: blur(28px); backdrop-filter: blur(28px);
+  border-radius: 10px; border: .5px solid var(--field-border);
+  box-shadow: 0 12px 34px rgba(0,0,0,.24), 0 0 0 .5px rgba(0,0,0,.08);
+}
+.notes-fmt .fmt-cap { font-size: 10.5px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; padding: 3px 8px 5px; }
+.notes-fmt .fmt-row {
+  display: flex; align-items: center; width: 100%; padding: 4px 8px; border-radius: 6px;
+  font-size: 12.5px; color: var(--text); text-align: left;
+}
+.notes-fmt .fmt-row:hover { background: var(--accent); color: #1c1c1e; }
+.notes-fmt .fmt-row:hover .fmt-key { color: rgba(0,0,0,.5); }
+.notes-fmt .fmt-key { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.notes-fmt hr { border: 0; border-top: .5px solid var(--sep); margin: 4px 7px; }
+.notes-fmt .fmt-btns { display: flex; gap: 5px; padding: 3px 6px 2px; }
+.notes-fmt .fmt-b {
+  width: 30px; height: 24px; border-radius: 5px; font-size: 12.5px; font-weight: 700; color: var(--text);
+  border: .5px solid var(--field-border); background: var(--control);
+}
+.notes-fmt .fmt-b:hover { background: var(--hover); }
+.notes-fmt .fmt-b.it { font-style: italic; font-family: Georgia, serif; }
+.notes-fmt .fmt-b.ul { text-decoration: underline; }
+.notes-fmt .fmt-b.st { text-decoration: line-through; }
+
+/* a sheet that hangs from the top of the window (shared with other apps via .app-sheet) */
+.sheet-veil {
+  position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,0);
+  transition: background .2s; display: flex; justify-content: center; align-items: flex-start;
+}
+.sheet-veil.in { background: rgba(0,0,0,.16); }
+.app-sheet {
+  width: 320px; margin-top: 0; padding: 16px 18px 14px;
+  background: var(--win-solid); border-radius: 0 0 12px 12px;
+  border: .5px solid var(--field-border); border-top: 0;
+  box-shadow: 0 22px 60px rgba(0,0,0,.32);
+  transform: translateY(-14px); opacity: 0;
+  transition: transform .24s var(--ease-spring), opacity .18s;
+}
+.sheet-veil.in .app-sheet { transform: none; opacity: 1; }
+.app-sheet h3 { font-size: 13px; font-weight: 700; margin: 0 0 4px; text-align: center; }
+.app-sheet .sheet-sub { font-size: 11.5px; color: var(--text-2); text-align: center; margin: 0 0 10px; }
+.app-sheet .sheet-err { font-size: 11px; color: #ff3b30; text-align: center; margin: 6px 0 0; }
+.app-sheet .field {
+  display: block; width: 100%; height: 26px; margin-top: 7px;
+  border: .5px solid var(--field-border); border-radius: 6px; background: var(--field);
+  color: var(--text); font-size: 12.5px; padding: 0 9px; outline: none;
+}
+.app-sheet .field:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.app-sheet .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.app-sheet .btn.danger-btn { background: #ff3b30; color: #fff; }
+
+/* inline folder rename + drop targets */
+.app-notes .sb-rename {
+  flex: 1; min-width: 0; height: 18px; font-size: 12.5px; padding: 0 4px;
+  border: 1px solid var(--accent); border-radius: 4px; outline: none;
+  background: var(--field); color: var(--text);
+}
+.app-notes .sb-item.drop-hint { outline: 2px solid var(--accent); outline-offset: -2px; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.app-notes .sb-newfolder { color: var(--text-2); }
+.app-notes .sb-newfolder .glyph { color: var(--text-2); }
+
+/* search matches paint like macOS find */
+::highlight(notes-find) { background: rgba(255, 204, 0, .55); color: inherit; }
+html[data-appearance="dark"] ::highlight(notes-find) { background: rgba(230, 184, 0, .45); }

@@ -1,0 +1,127 @@
+/* Desktop extensions: icon sizing vars, Stacks, the stack fan, the floating
+   View Options panel, Spotlight's preview pane, lock-screen shake and the
+   wallpaper-tinted window chrome. Base.css already owns the big accessibility
+   switches (data-contrast / data-transparency / data-motion / #nightshift);
+   these rules add the class aliases and the row sizing they do not cover. */
+
+/* ── desktop icons: size follows View Options ──────────────────────── */
+.desk-icon { width: calc(var(--diw, 60px) + 28px); }
+.desk-icon .thumb { width: var(--diw, 60px); height: var(--diw, 60px); }
+.desk-icon .label { font-size: var(--dls, 11.5px); }
+.desk-icon .thumb svg { object-fit: contain; }
+.desk-icon .photo-thumb { width: 100%; height: 100%; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,.35); }
+.desk-icon .photo-thumb svg { width: 100%; height: 100%; }
+
+/* ── Stacks ────────────────────────────────────────────────────────── */
+.desk-stack .thumb { position: relative; }
+.desk-stack .stack-back {
+  position: absolute; inset: 6px -4px -4px 6px; border-radius: 8px;
+  background: rgba(255,255,255,.28); box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  transform: rotate(-4deg);
+}
+html[data-appearance="dark"] .desk-stack .stack-back { background: rgba(20,20,24,.6); }
+.desk-stack .stack-front { position: absolute; inset: 0; display: grid; place-items: center; }
+.desk-stack .stack-front svg { width: 82%; height: 82%; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+.desk-stack .stack-count {
+  position: absolute; top: -3px; right: -6px; min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: 9px; background: var(--accent); color: var(--accent-contrast);
+  font-size: 10px; font-weight: 600; display: grid; place-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.desk-stack:hover .thumb { filter: brightness(1.08); }
+
+/* the fan a stack opens into */
+.stack-fan {
+  position: absolute; z-index: 60; min-width: 240px; max-width: 340px; max-height: 300px;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--panel); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: .5px solid var(--field-border); border-radius: 12px;
+  box-shadow: var(--shadow); animation: pop .14s var(--ease);
+}
+.stack-fan .fan-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 9px 12px 7px; border-bottom: .5px solid var(--sep); font-size: 12px;
+}
+.stack-fan .fan-head b { font-size: 12.5px; }
+.stack-fan .fan-head span { color: var(--text-3); font-size: 11px; }
+.stack-fan .fan-grid { overflow-y: auto; padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; scrollbar-width: thin; }
+.stack-fan .fan-item {
+  display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 7px;
+  min-width: 0; text-align: left;
+}
+.stack-fan .fan-item:hover { background: var(--accent); color: var(--accent-contrast); }
+.stack-fan .fan-ic { width: 26px; height: 26px; flex: none; display: grid; place-items: center; }
+.stack-fan .fan-ic svg, .stack-fan .fan-ic .photo-thumb { width: 100%; height: 100%; }
+.stack-fan .fan-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── View Options panel ────────────────────────────────────────────── */
+.vo-panel {
+  position: fixed; z-index: 11500; width: 268px; padding: 14px 16px 12px;
+  background: var(--panel); backdrop-filter: blur(34px) saturate(190%); -webkit-backdrop-filter: blur(34px) saturate(190%);
+  border: .5px solid var(--field-border); border-radius: 12px; box-shadow: var(--shadow);
+  animation: pop .14s var(--ease);
+}
+.vo-panel .vo-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+.vo-panel .vo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.vo-panel .vo-label { width: 82px; flex: none; font-size: 12px; color: var(--text-2); text-align: right; }
+.vo-panel .vo-row .range { flex: 1; min-width: 0; }
+.vo-panel .vo-val { width: 24px; font-size: 11px; color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
+.vo-panel .vo-sort { flex: 1; text-align: left; }
+.vo-panel .vo-sub { margin-top: 4px; padding-top: 8px; border-top: .5px solid var(--sep); font-size: 11px; color: var(--text-3); }
+
+/* ── Spotlight: results + preview ──────────────────────────────────── */
+#spotlight .sp-body { display: flex; min-width: 0; }
+#spotlight .sp-results { flex: 1; min-width: 0; }
+#spotlight .sp-preview { display: none; }
+#spotlight.with-preview { width: 920px; }
+#spotlight.with-preview .sp-preview {
+  display: flex; flex-direction: column; width: 296px; flex: none;
+  border-left: .5px solid var(--sep); padding: 22px 20px;
+  max-height: 420px; overflow: auto;
+}
+.spv-card { display: flex; flex-direction: column; align-items: center; text-align: center; margin: auto 0; }
+.spv-icon { width: 84px; height: 84px; margin-bottom: 12px; display: grid; place-items: center; }
+.spv-icon svg { width: 100%; height: 100%; }
+.spv-title { font-size: 16px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.spv-sub { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
+.spv-detail { font-size: 12px; color: var(--text-3); margin-top: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+.spv-table { width: 100%; margin-top: 12px; font-size: 11.5px; border-collapse: collapse; }
+.spv-table td { padding: 3px 0; text-align: left; }
+.spv-table td:first-child { color: var(--text-3); width: 72px; }
+.spv-table tr + tr td { border-top: .5px solid var(--sep); }
+.spv-hint { margin-top: 16px; font-size: 10.5px; color: var(--text-3); }
+#spotlight .sp-group { display: flex; align-items: center; gap: 6px; }
+
+/* ── lock screen: the wrong-password shake ─────────────────────────── */
+@keyframes lock-shake {
+  0%, 100% { transform: translateX(0); }
+  18% { transform: translateX(-10px); }
+  36% { transform: translateX(9px); }
+  54% { transform: translateX(-6px); }
+  72% { transform: translateX(5px); }
+  88% { transform: translateX(-2px); }
+}
+#lock .field.shake { animation: lock-shake .4s ease-in-out; border-color: rgba(255,80,80,.8); }
+#lock .lock-in .hint { min-height: 16px; }
+
+/* ── sidebar size (Settings → Appearance) ──────────────────────────── */
+html .sb-item { height: var(--sb-row, 25px); }
+.window.app-finder .sb-item { height: var(--sb-row, 24px); }
+
+/* ── wallpaper tint: chrome picks up the scene's hue ───────────────── */
+html[data-tint="on"] .window .titlebar {
+  background-image: linear-gradient(180deg,
+    color-mix(in srgb, var(--wall-tint, transparent) 15%, transparent),
+    color-mix(in srgb, var(--wall-tint, transparent) 5%, transparent));
+}
+/* the dock hairline stays neutral — macOS tints window chrome, not the shelf */
+
+/* class aliases mirror the data-attribute switches so either mechanism works */
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after {
+  animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important;
+}
+body.no-transparency *, body.no-transparency *::before, body.no-transparency *::after {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+body.no-transparency .glass, body.no-transparency .window, body.no-transparency #dock { background: var(--win-solid) !important; }

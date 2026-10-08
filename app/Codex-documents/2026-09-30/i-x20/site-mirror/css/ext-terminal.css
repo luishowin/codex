@@ -1,0 +1,162 @@
+/* Terminal.app extras — tab strip, per-tab panes, full-pane editors and the
+   ANSI colours commands can emit. The base .term styling lives in apps.css. */
+
+/* a Terminal window is a strip of tabs on top of a stack of panes */
+.window.app-terminal .win-body.term-host {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* the tab strip only exists once a second tab is open, like real Terminal */
+.term-tabs {
+  display: none;
+  flex: none;
+  height: 30px;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 0 10px;
+  background: #17171a;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.14);
+}
+.term-tabs.on { display: flex; }
+.term-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 90px;
+  max-width: 190px;
+  height: 25px;
+  padding: 0 9px;
+  margin-bottom: 2px;
+  border: 0;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: rgba(235, 235, 245, 0.55);
+  font: 500 11.5px/1 -apple-system, "SF Pro Text", system-ui, sans-serif;
+  cursor: default;
+  white-space: nowrap;
+}
+.term-tab .tt-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.term-tab:hover { background: rgba(255, 255, 255, 0.06); }
+.term-tab.sel {
+  background: rgba(58, 58, 62, 0.95);
+  color: rgba(255, 255, 255, 0.95);
+}
+.term-tab .tt-x {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 3.5px;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  opacity: 0;
+}
+.term-tab:hover .tt-x, .term-tab.sel .tt-x { opacity: 1; }
+.term-tab .tt-x:hover { background: rgba(255, 255, 255, 0.22); color: #fff; }
+.term-tab-plus {
+  flex: none;
+  align-self: center;
+  margin-left: 6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(235, 235, 245, 0.7);
+  font: 400 14px/18px -apple-system, system-ui, sans-serif;
+}
+.term-tab-plus:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+
+/* each tab is a full-size shell; only the front one is visible */
+.term-panes { position: relative; flex: 1; min-height: 0; }
+.term-pane { position: absolute; inset: 0; display: none; }
+.term-pane.on { display: block; }
+.term-pane .term { width: 100%; height: 100%; }
+
+/* editors are full-pane, like vim and nano really are */
+.term-editor {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(22, 22, 24, 0.99);
+}
+.term-editor .term-edit-area {
+  flex: 1;
+  width: 100%;
+  max-height: none;
+  min-height: 0;
+  resize: none;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  padding: 8px 10px;
+  background: transparent;
+  color: rgba(235, 235, 245, 0.92);
+  font: 12px/1.45 var(--mono, "SF Mono", Menlo, monospace);
+  white-space: pre;
+}
+.term-editor .term-edit-bar {
+  flex: none;
+  padding: 4px 10px;
+  background: #d7d7db;
+  color: #1c1c1e;
+  font: 11px/1.4 var(--mono, "SF Mono", Menlo, monospace);
+  white-space: pre;
+}
+.term-editor .term-edit-hint {
+  flex: none;
+  padding: 4px 10px;
+  background: #17171a;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.12);
+  color: rgba(235, 235, 245, 0.6);
+  font: 10.5px/1.5 var(--mono, "SF Mono", Menlo, monospace);
+  white-space: pre;
+}
+.term-editor .term-edit-cmd {
+  border: 0;
+  outline: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  width: 80%;
+}
+
+/* the hidden password box sudo draws */
+.term-pass {
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: rgba(235, 235, 245, 0.92);
+  font: inherit;
+  padding: 0;
+  margin-left: 6px;
+  width: 60%;
+  caret-color: transparent;   /* sudo never echoes; not even a caret blink */
+}
+
+/* the ANSI palette commands are allowed to print */
+.term .a-b, .term-pane .a-b { font-weight: 700; }
+.term .a-dim, .term-pane .a-dim { opacity: 0.55; }
+.term .a-it { font-style: italic; }
+.term .a-u { text-decoration: underline; }
+.term .a-rev { background: rgba(235, 235, 245, 0.85); color: #1c1c1e; }
+.term .a-f0 { color: #000; } .term .a-f1 { color: #ff453a; }
+.term .a-f2 { color: #32d74b; } .term .a-f3 { color: #ffd60a; }
+.term .a-f4 { color: #0a84ff; } .term .a-f5 { color: #bf5af2; }
+.term .a-f6 { color: #64d2ff; } .term .a-f7 { color: #fff; }

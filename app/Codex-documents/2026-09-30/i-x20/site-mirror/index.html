@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-appearance="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>macOS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230a84ff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/shell.css">
+<link rel="stylesheet" href="css/windows.css">
+<link rel="stylesheet" href="css/apps.css">
+<link rel="stylesheet" href="css/ext-terminal.css">
+<link rel="stylesheet" href="css/ext-safari.css">
+<link rel="stylesheet" href="css/ext-notes.css">
+<link rel="stylesheet" href="css/ext-textedit.css">
+<link rel="stylesheet" href="css/ext-finder.css">
+<link rel="stylesheet" href="css/ext-media.css">
+<link rel="stylesheet" href="css/ext-calc.css">
+<link rel="stylesheet" href="css/ext-store.css">
+<link rel="stylesheet" href="css/ext-windows.css">
+<link rel="stylesheet" href="css/ext-shell.css">
+<link rel="stylesheet" href="css/ext-desktop.css">
+<link rel="stylesheet" href="css/ext-settings.css">
+</head>
+<body>
+  <div id="screen">
+    <div id="desktop" data-context="desktop">
+      <div id="wallpaper" aria-hidden="true"></div>
+      <div id="desktop-icons" role="presentation"></div>
+      <div id="marquee" hidden></div>
+    </div>
+
+    <div id="windows"></div>
+
+    <header id="menubar" aria-label="Menu bar"></header>
+    <div id="dock-wrap"><nav id="dock" aria-label="Dock"></nav></div>
+
+    <div id="overlays"></div>
+    <div id="notifications" aria-live="polite"></div>
+    <div id="brightness" aria-hidden="true"></div>
+    <div id="nightshift" aria-hidden="true"></div>
+    <div id="toast-zoom" role="status" aria-live="polite"></div>
+    <div id="vo-caption" aria-live="polite"></div>
+  </div>
+
+  <div id="boot" hidden></div>
+  <div id="lock" hidden></div>
+  <div id="power" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

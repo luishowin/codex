@@ -1,0 +1,110 @@
+/* macOS recreation — window chrome + window manager visuals */
+.window {
+  position: absolute; display: flex; flex-direction: column; min-width: 260px; min-height: 160px;
+  background: var(--win); backdrop-filter: blur(46px) saturate(180%); -webkit-backdrop-filter: blur(46px) saturate(180%);
+  border-radius: var(--radius-win); box-shadow: var(--shadow-win); overflow: hidden;
+  transform-origin: center; will-change: transform;
+  animation: win-open .30s var(--ease-spring);
+}
+@keyframes win-open {
+  from { opacity: 0; transform: scale(.90) translateY(16px); }
+  60% { opacity: 1; }
+}
+.window.inactive { box-shadow: 0 0 0 .5px rgba(0,0,0,.2), 0 12px 34px rgba(0,0,0,.24); }
+.window.inactive .win-title { color: var(--text-3); }
+.window.closing { animation: win-close .2s cubic-bezier(.5, 0, .75, 0) forwards; }
+@keyframes win-close { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9) translateY(8px); } }
+.window.minimized { pointer-events: none; }
+.window.zoomed { transition: left .34s var(--ease-spring), top .34s var(--ease-spring), width .34s var(--ease-spring), height .34s var(--ease-spring); }
+.window.snapping { transition: left .22s var(--ease), top .22s var(--ease), width .22s var(--ease), height .22s var(--ease); }
+.window.fullscreen { border-radius: 0 !important; z-index: 7900 !important; }
+
+/* dark chrome (Calculator, Terminal-like windows) */
+/* Sequoia sidebar windows: a full-height sidebar with the traffic lights inside it */
+.window.has-sidebar { display: flex; flex-direction: row; }
+.sb-host {
+  width: 200px; flex: none; display: flex; flex-direction: column; min-height: 0;
+  background: var(--sidebar); border-right: .5px solid var(--sep);
+}
+.sb-top { height: 40px; flex: none; display: flex; align-items: center; padding: 0 13px; cursor: default; }
+.window.has-sidebar .traffic { position: static; z-index: 4; }
+.sb-body { flex: 1; min-height: 0; padding: 0 6px 10px; }
+.window.has-sidebar .titlebar.inset { background: var(--toolbar); }
+.window.has-sidebar .titlebar { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.window.has-sidebar .win-body { background: transparent; }
+.window.has-sidebar .sb-body .sidebar { width: auto; background: none; border: 0; padding: 0; }
+.window.has-sidebar .mc-shot .sb-host { width: 200px; }
+
+.win-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* dark chrome (Calculator and other dark windows) */
+.window.dark-chrome { background: #1c1c1e; color: #fff; }
+.window.dark-chrome .titlebar { background: linear-gradient(to bottom, #3d3d40, #2b2b2e); border-bottom-color: rgba(255,255,255,.1); }
+.window.dark-chrome .win-title { color: rgba(255,255,255,.9); }
+.window.dark-chrome.window.inactive .win-title { color: rgba(255,255,255,.45); }
+.window.dark-chrome .tb-btn { color: rgba(255,255,255,.75); }
+.window.dark-chrome .tb-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+.titlebar {
+  height: 39px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  background: var(--toolbar); border-bottom: .5px solid var(--sep); position: relative;
+}
+.titlebar.tall { height: 46px; }
+.win-title { font-size: 13px; font-weight: 600; text-align: center; color: var(--text); pointer-events: none; }
+/* the title centres in whatever space the toolbar leaves, so it never collides */
+.titlebar .title-slot { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; padding: 0 8px; pointer-events: none; }
+.titlebar .win-title { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.traffic { display: flex; align-items: center; gap: 8px; z-index: 3; }
+.light { width: 12px; height: 12px; border-radius: 50%; position: relative; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.14); }
+.light::after { content: ""; position: absolute; inset: 0; border-radius: 50%; opacity: 0; transition: opacity .08s; }
+.light:active::after { opacity: 1; }
+.light.close { background: #ff5f57; } .light.close::after { background: #e0443e; }
+.light.min { background: #febc2e; } .light.min::after { background: #de9d17; }
+.light.zoom { background: #28c840; } .light.zoom::after { background: #1eae2f; }
+.window.inactive .light { background: var(--traffic-off); }
+.window.inactive .light::after { opacity: 0 !important; }
+.tb-tools { display: flex; align-items: center; gap: 6px; z-index: 2; flex: 0 1 auto; min-width: 0; }
+.tb-right { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; z-index: 2; }
+.tb-btn { height: 24px; min-width: 27px; padding: 0 6px; border-radius: 6px; display: flex; align-items: center; gap: 5px; justify-content: center; color: var(--text-2); }
+.tb-btn:hover { background: var(--hover); color: var(--text); }
+.tb-btn.on { background: var(--active); color: var(--text); }
+.tb-btn:disabled { opacity: .32; }
+
+.win-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.win-body > * { min-height: 0; }
+.window.no-chrome .win-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.window.no-chrome .titlebar { display: none; }
+
+/* Sequoia sidebar windows: a full-height sidebar with the traffic lights inside it */
+.window.has-sidebar { display: flex; }
+.sb-host {
+  width: 200px; flex: none; display: flex; flex-direction: column; min-height: 0;
+  background: var(--sidebar); border-right: .5px solid var(--sep);
+}
+.sb-top { height: 40px; flex: none; display: flex; align-items: center; padding: 0 13px; }
+.window.has-sidebar .traffic { position: static; }
+.sb-body { flex: 1; min-height: 0; padding: 0 6px 10px; }
+.window.has-sidebar .titlebar.inset { border-bottom: .5px solid var(--sep); background: var(--toolbar); }
+.window.has-sidebar .titlebar { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.window.has-sidebar .sb-body .sidebar { width: auto; background: none; border: 0; padding: 0; }
+
+
+.rsz { position: absolute; z-index: 10; }
+.rsz.n { top: -3px; left: 10px; right: 10px; height: 7px; cursor: ns-resize; }
+.rsz.s { bottom: -3px; left: 10px; right: 10px; height: 7px; cursor: ns-resize; }
+.rsz.w { left: -3px; top: 10px; bottom: 10px; width: 7px; cursor: ew-resize; }
+.rsz.e { right: -3px; top: 10px; bottom: 10px; width: 7px; cursor: ew-resize; }
+.rsz.nw { top: -3px; left: -3px; width: 12px; height: 12px; cursor: nwse-resize; }
+.rsz.ne { top: -3px; right: -3px; width: 12px; height: 12px; cursor: nesw-resize; }
+.rsz.sw { bottom: -3px; left: -3px; width: 12px; height: 12px; cursor: nesw-resize; }
+.rsz.se { bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: nwse-resize; }
+.window.fullscreen .rsz { display: none; }
+.snap-hint { position: absolute; top: var(--menubar-h); bottom: 0; width: 50%; z-index: 7800; background: color-mix(in srgb, var(--accent) 16%, transparent); border: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); opacity: 0; transition: opacity .16s; pointer-events: none; }
+.snap-hint.show { opacity: 1; }
+
+.mc-proxy { position: absolute; z-index: 3; border-radius: var(--radius-win); cursor: pointer; }
+.window.mc-live { pointer-events: none; }
+.window.mc-live .titlebar { cursor: default; }
+.mc-shot { position: absolute; top: 0; left: 0; transform-origin: top left; pointer-events: none; }
+.mc-shot .window { position: absolute; inset: 0; animation: none; box-shadow: none; backdrop-filter: none; }
+.mc-shot .rsz { display: none; }

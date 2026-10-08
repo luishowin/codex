@@ -1,0 +1,127 @@
+/* TextEdit: the document sheet, the find bar, plain-document chrome and the
+   dirty dot the close button carries. */
+
+/* ── the format bar ─────────────────────────────────────────────────── */
+.app-textedit .te-format { gap: 4px; }
+.app-textedit .te-sel {
+  height: 22px; max-width: 150px; border: .5px solid var(--field-border); border-radius: 5px;
+  background: var(--control); color: var(--text); font-size: 12px; padding: 0 4px; outline: none;
+}
+.app-textedit .te-size {
+  width: 40px; height: 22px; border: .5px solid var(--field-border); border-radius: 5px;
+  background: var(--field); color: var(--text); font-size: 12px; text-align: center; outline: none;
+}
+.app-textedit .te-step { font-size: 14px; color: var(--text-2); padding: 0 5px; }
+.app-textedit .te-b { min-width: 24px; height: 22px; border-radius: 5px; font-size: 12px; font-weight: 700; color: var(--text-2); padding: 0 6px; }
+.app-textedit .te-b:hover { background: var(--hover); }
+.app-textedit .te-b.on { background: var(--active); color: var(--text); }
+.app-textedit .te-b.i { font-style: italic; font-family: Georgia, serif; }
+.app-textedit .te-b.u { text-decoration: underline; }
+.app-textedit .te-b.s { text-decoration: line-through; }
+.app-textedit .te-well {
+  width: 22px; height: 22px; border-radius: 5px; border: .5px solid var(--field-border);
+  box-shadow: inset 0 0 0 .5px rgba(0,0,0,.12);
+}
+.app-textedit .te-well.text-well { background: #111; }
+.app-textedit .te-well.hi-well { background: #ffd60a; }
+.app-textedit .te-well:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* color popover under the wells */
+.te-pop {
+  position: fixed; z-index: 6000; display: grid; grid-template-columns: repeat(5, 22px); gap: 6px;
+  padding: 9px; background: var(--menu-bg, rgba(246,246,248,.94));
+  -webkit-backdrop-filter: blur(28px); backdrop-filter: blur(28px);
+  border-radius: 10px; border: .5px solid var(--field-border);
+  box-shadow: 0 12px 34px rgba(0,0,0,.24);
+}
+.te-pop .te-swatch { width: 22px; height: 22px; border-radius: 5px; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.te-pop .te-swatch:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* the ruler strip under the format bar */
+.app-textedit .te-ruler {
+  height: 16px; flex: none; padding: 0; justify-content: stretch;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 34px, var(--text-3) 34px calc(34px + .5px)),
+    var(--win-solid);
+  border-bottom: .5px solid var(--sep);
+}
+.app-textedit .te-ruler .r-mark { font-size: 8px; color: var(--text-3); margin-left: 56px; line-height: 8px; }
+
+/* ── plain documents lose the page chrome ───────────────────────────── */
+.app-textedit.te-plain .te-format, .app-textedit.te-plain .te-ruler { display: none; }
+.app-textedit.te-plain .te-wrap { background: var(--win-solid); padding: 0; }
+.app-textedit.te-plain .te-page {
+  width: 100%; margin: 0; padding: 10px 14px; box-shadow: none; border-radius: 0;
+  background: var(--paper); color: var(--text);
+}
+
+/* ── the find bar, attached under the toolbar ───────────────────────── */
+.app-textedit .te-find {
+  display: flex; align-items: center; gap: 6px; height: 34px; flex: none;
+  padding: 0 10px; background: var(--win-solid); border-bottom: .5px solid var(--sep);
+}
+.app-textedit .te-find[hidden] { display: none; }
+.app-textedit .te-find .find-ic .glyph { width: 13px; height: 13px; color: var(--text-3); }
+.app-textedit .find-f {
+  width: 170px; height: 24px; border: .5px solid var(--field-border); border-radius: 6px;
+  background: var(--field); color: var(--text); font-size: 12px; padding: 0 8px; outline: none;
+}
+.app-textedit .find-f:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.app-textedit .find-count { font-size: 11px; color: var(--text-3); min-width: 60px; text-align: center; }
+.app-textedit .te-find .tb-btn { font-size: 12px; color: var(--text-2); }
+.app-textedit .te-find .find-x { margin-left: auto; }
+::highlight(te-find) { background: rgba(255, 214, 10, .5); color: inherit; }
+
+/* ── a dirty document carries the dot on its close button ───────────── */
+.app-textedit .dirty-dot {
+  position: absolute; inset: 0; margin: auto; width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(0,0,0,.72); display: none; pointer-events: none;
+}
+.app-textedit.dirty-doc .dirty-dot { display: block; }
+.app-textedit.dirty-doc .light.close:hover .dirty-dot { opacity: 0; }
+
+/* ── the save / open sheet: centered, hanging under the title bar ───── */
+.app-textedit .sheet-veil {
+  position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,0);
+  transition: background .2s; display: flex; justify-content: center; align-items: flex-start;
+}
+.app-textedit .sheet-veil.in { background: rgba(0,0,0,.16); }
+.app-textedit .save-sheet {
+  position: absolute; left: 50%; right: auto; top: 0; bottom: auto;
+  width: 380px; height: auto; max-height: calc(100% - 8px); overflow: auto;
+  transform: translateX(-50%) translateY(-16px); opacity: 0;
+  transition: transform .26s var(--ease-spring), opacity .18s;
+  background: var(--win-solid);
+  border: .5px solid var(--field-border); border-top: 0;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 22px 60px rgba(0,0,0,.32);
+  padding: 13px 16px 12px; z-index: 1;
+}
+.app-textedit .save-sheet.in { transform: translateX(-50%); opacity: 1; }
+.app-textedit .save-sheet.mini { width: 300px; }
+.app-textedit .save-sheet h3 { font-size: 13px; font-weight: 700; margin: 0 0 4px; text-align: center; }
+.app-textedit .save-sheet .sheet-sub { font-size: 11.5px; color: var(--text-2); text-align: center; margin: 0 0 10px; }
+.app-textedit .ss-line { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.app-textedit .ss-line > label { width: 74px; flex: none; text-align: right; font-size: 12px; color: var(--text-2); font-weight: 500; }
+.app-textedit .ss-line > label.sheet-h { text-align: left; font-size: 13px; font-weight: 700; color: var(--text); }
+.app-textedit .te-name { flex: 1; width: auto; height: 24px; }
+.app-textedit .ss-where, .app-textedit .ss-fmt {
+  flex: 1; min-width: 0; height: 24px; border: .5px solid var(--field-border); border-radius: 5px;
+  background: var(--control); color: var(--text); font-size: 12px; padding: 0 6px; outline: none;
+}
+.app-textedit .ss-chev { margin-left: 0; flex: none; }
+.app-textedit .ss-chev .glyph { width: 11px; height: 11px; }
+.app-textedit .ss-body {
+  flex: none; display: flex; height: 180px; margin: 4px 0 8px;
+  border: .5px solid var(--field-border); border-radius: 8px; overflow: hidden;
+}
+.app-textedit .ss-body[hidden] { display: none; }
+.app-textedit .ss-body .ss-side { width: 140px; }
+.app-textedit .ss-row.on { background: var(--accent); color: var(--accent-contrast, #fff); }
+.app-textedit .ss-row.on .glyph, .app-textedit .ss-row.on .ss-meta { color: var(--accent-contrast, #fff); }
+.app-textedit .ss-meta { margin-left: auto; font-size: 10.5px; color: var(--text-3); }
+.app-textedit .ss-foot { border-top: 0; padding: 2px 0 0; justify-content: flex-end; gap: 8px; }
+.app-textedit .btn.danger-btn { background: #ff3b30; color: #fff; }
+
+/* plain pages should not read like a rich document */
+.app-textedit .te-page p { margin: 0 0 .5em; }

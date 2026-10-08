@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Machine-local virtual environments (never portable: recreate per machine,
+# see README "Install")
+.venv/
+
+# Logs (daemon output goes to _work/logs/)
+*.log
+
+# Generated / disposable working artifacts (caches, sheets, manifests, pidfiles)
+_work/
+
+# NOTE: data/*.codex.db, data/*.codex-deep.db and data/art.db are the built
+# corpora (~32 GB of film) and are deliberately NOT committed here. Rebuild
+# them with app/codexctl.py (see README "Build"). If the project ever needs
+# versioned data, manage data/ with Git LFS instead of committing it casually.
+*.codex.db*
+*.codex-deep.db*
+art.db*
