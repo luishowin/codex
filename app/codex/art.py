@@ -53,10 +53,14 @@ class ArtStore:
             raise FileNotFoundError(self.path)
         self._local = threading.local()
         con = self._connect()
-        # The whole point of the dict: hit annotation is a lookup, not a query.
-        self._binding: dict[tuple[str, int], int] = {
-            (codex, doc_id): art_id for codex, doc_id, art_id
-            in con.execute("SELECT codex, doc_id, art_id FROM binding")}
+        # The whole point of the dicts: hit annotation and shelf links are
+        # lookups, not queries.
+        self._binding: dict[tuple[str, int], int] = {}
+        self._bound_docs: dict[int, list[tuple[str, int]]] = {}
+        for codex, doc_id, art_id in con.execute(
+                "SELECT codex, doc_id, art_id FROM binding"):
+            self._binding[(codex, doc_id)] = art_id
+            self._bound_docs.setdefault(art_id, []).append((codex, doc_id))
         self._meta: dict[int, dict] = {}
         self._by_slug: dict[str, int] = {}
         for row in con.execute(f"SELECT id, {', '.join(_FIELDS)} FROM art"):
@@ -116,6 +120,37 @@ class ArtStore:
             slug = self.slug_for(h.get("codex", ""), h.get("id", -1))
             if slug:
                 h["art"] = slug
+
+    def shelf(self, letter: str, loaded: set[str]) -> list[dict]:
+        """Curated subjects for one A-Z letter, each with a live doc link.
+
+        Subjects are art-side (title, discipline, thumbnail); the link is the
+        subject's binding, wikipedia preferred, restricted to `loaded` codexes
+        so every card opens. Subjects with no loaded binding are skipped, and
+        an empty letter yields an empty list the canvas hides.
+        """
+        out = []
+        for art_id, rec in self._meta.items():
+            subject = rec.get("subject") or ""
+            initial = subject[:1].upper()
+            key = initial if "A" <= initial <= "Z" else "#"
+            if key != letter:
+                continue
+            docs = [d for d in self._bound_docs.get(art_id, [])
+                    if d[0] in loaded]
+            if not docs:
+                continue
+            pick = next((d for d in docs if d[0] == "wikipedia"), docs[0])
+            out.append({
+                "subject": subject,
+                "discipline": rec.get("discipline", ""),
+                "slug": rec["slug"],
+                "thumb_url": rec["thumb_url"],
+                "codex": pick[0],
+                "doc_id": pick[1],
+            })
+        out.sort(key=lambda i: i["subject"].lower())
+        return out
 
     # --- introspection -----------------------------------------------------
 

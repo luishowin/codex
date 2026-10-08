@@ -367,3 +367,27 @@ class TestTextOnlyStillHolds:
         for bad in ("urllib", "requests", "httpx", "socket", "http",
                     "art_commons", "PIL"):
             assert bad not in imported, f"codex/art.py imports {bad}"
+
+
+class TestShelf:
+    """Curated shelf for the A-Z strip: one live card per subject initial."""
+
+    def test_letter_returns_live_links(self, art):
+        items = art.shelf("H", {"wikipedia"})
+        assert items, "expected H subjects"
+        subjects = [it["subject"] for it in items]
+        assert subjects == sorted(subjects, key=str.lower)
+        for it in items:
+            assert it["subject"][:1].upper() == "H"
+            assert it["codex"] == "wikipedia"
+            assert it["thumb_url"].startswith("/art/")
+            assert it["thumb_url"].endswith(".thumb.webp")
+            for k in ("discipline", "slug", "doc_id"):
+                assert k in it and it[k]
+
+    def test_invalid_letter_is_empty(self, art):
+        assert art.shelf("?", {"wikipedia"}) == []
+
+    def test_unbound_codex_yields_nothing(self, art):
+        # mdn carries no bindings, so nothing may link there.
+        assert art.shelf("H", {"mdn"}) == []

@@ -125,6 +125,11 @@ commands in `START-GUIDE.html`; agent rules in `AGENTS.md`.
    canonical article. Known wrinkle kept: importance can overturn aboutness
    on small corpora (`spudger` → Bose guide above the spudger page).
  - Tests: `app/tests/test_browse.py` (5 tests); suite 143 passed.
+ - Curated shelf: `ArtStore.shelf()` (reverse binding map, wikipedia
+   preferred, links restricted to loaded rolls so every card opens),
+   `GET /api/shelf`, Featured row atop each browse letter (thumbnail cards
+   to `/read` permalinks; empty letters hide the row). Verified live
+   (H → 8 cards); `test_art.py` +3 shelf tests, suite 146 passed.
 
 ## Next
 

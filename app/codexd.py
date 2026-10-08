@@ -253,6 +253,14 @@ class Handler(BaseHTTPRequestHandler):
                               one("codex"))
             return self._json(page)
 
+        if u.path == "/api/shelf":
+            letter = (one("letter", "") or "")[:1].upper()
+            if not letter or (letter != "#" and not "A" <= letter <= "Z"):
+                return self._json({"letter": letter, "items": []})
+            items = (ART.shelf(letter, set(CODEXES))
+                     if ART is not None else [])
+            return self._json({"letter": letter, "items": items})
+
         if u.path == "/api/doc":
             name, doc_id = one("codex"), one("id")
             if name not in CODEXES or not doc_id:
