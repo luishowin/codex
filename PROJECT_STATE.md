@@ -103,6 +103,9 @@ commands in `START-GUIDE.html`; agent rules in `AGENTS.md`.
    resolution, `Codex-documents`/`codex-site` notes, `.venv` test command).
  - Verified: `node --check` on both page script blocks, `/read` → 200,
    `pytest` 138 passed.
+ - Private GitHub repo `luishowin/codex` (main branch): code, scripts, docs
+   pushed; the ~32 GB of film (`*.codex.db*`, `*.codex-deep.db*`,
+   `art.db*`) is git-ignored, as are `.venv/` and `_work/`.
 
 ## Next
 
