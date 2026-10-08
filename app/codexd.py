@@ -132,6 +132,31 @@ def search_all(q: str, limit: int, deep: bool, only: str | None) -> dict:
     }
 
 
+def _browse_one(name: str, prefix: str, limit: int, after: str) -> list:
+    try:
+        hits = CODEXES[name].browse(prefix, limit=limit, after=after)
+    except Exception as exc:
+        print(f"  !! browse {name}: {exc}", file=sys.stderr)
+        return []
+    for h in hits:
+        h["codex"] = name
+    return hits
+
+
+def browse_all(prefix: str, limit: int, after: str,
+               only: str | None) -> dict:
+    """Alphabetical browse across every loaded codex, merged by title."""
+    targets = [only] if only and only in CODEXES else list(CODEXES)
+    if len(targets) == 1:
+        groups = [_browse_one(targets[0], prefix, limit, after)]
+    else:
+        groups = list(POOL.map(
+            lambda n: _browse_one(n, prefix, limit, after), targets))
+    hits = [h for g in groups for h in g]
+    hits.sort(key=lambda h: (h["title"].lower(), h["title"]))
+    return {"hits": hits[:limit], "prefix": prefix}
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -217,6 +242,15 @@ class Handler(BaseHTTPRequestHandler):
             page = search_all(q, limit, deep, one("codex"))
             page.update(ms=round((time.perf_counter() - t0) * 1000, 2),
                         deep=deep, q=q)
+            return self._json(page)
+
+        if u.path == "/api/browse":
+            prefix = (one("prefix", "") or "")[:1].upper()
+            if not prefix or (prefix != "#" and not "A" <= prefix <= "Z"):
+                return self._json({"hits": [], "prefix": prefix})
+            limit = max(1, min(int(one("n", "50") or 50), 200))
+            page = browse_all(prefix, limit, one("after", "") or "",
+                              one("codex"))
             return self._json(page)
 
         if u.path == "/api/doc":

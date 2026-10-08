@@ -89,6 +89,10 @@ CREATE TABLE IF NOT EXISTS related (
 CORE_INDEXES = """
 CREATE UNIQUE INDEX IF NOT EXISTS idx_doc_path       ON doc(path);
 CREATE        INDEX IF NOT EXISTS idx_doc_importance ON doc(importance DESC);
+-- A-Z browse key: title initial for the equality, full title for order and
+-- keyset paging. Expression index so LIKE-case quirks and per-row
+-- upper() calls stay out of the query; see Searcher.browse.
+CREATE        INDEX IF NOT EXISTS idx_doc_title      ON doc(upper(substr(title, 1, 1)), title);
 """
 
 # doc.flags bits

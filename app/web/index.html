@@ -429,6 +429,16 @@
   body.suggesting #suggest{display:block}
   body.suggesting #results{display:none}
   body.suggesting #corpus{display:none}
+
+  /* ---- A-Z browse strip: the alphabetical door beside ranked search ---- */
+  #az{display:none;flex:none;justify-content:center;gap:2px;flex-wrap:wrap;
+    padding:10px 16px;border-bottom:1px solid var(--card-border);background:var(--bg)}
+  body.results #az{display:flex}
+  #az button{font-family:var(--mono);font-size:11px;color:var(--text-2);
+    background:transparent;border:1px solid transparent;border-radius:6px;
+    padding:4px 0;width:30px;cursor:pointer}
+  #az button:hover{color:var(--text);border-color:var(--card-border)}
+  #az button.on{color:var(--accent);border-color:var(--accent)}
   .sug{display:block;padding:9px 16px;cursor:pointer;text-decoration:none;
     color:inherit}
   .sug:hover,.sug.sel{background:rgba(255,255,255,.05)}
@@ -498,6 +508,7 @@
     <div id="corpus">&nbsp;</div>
   </div>
 
+  <div id="az" aria-label="Browse alphabetically"></div>
   <div id="results"></div>
   <div id="reader"></div>
   <div id="stats"></div>
@@ -576,7 +587,7 @@
 const $  = s => document.querySelector(s);
 const qEl=$('#q'), resEl=$('#results'), readEl=$('#reader'), statsEl=$('#stats'),
       modeEl=$('#mode'), corpusEl=$('#corpus'), sugEl=$('#suggest'),
-      markEl=$('#mark');
+      azEl=$('#az'), markEl=$('#mark');
 
 /* Homepage artwork: one of the local backgrounds, swapped on every refresh. */
 (function(){
@@ -746,9 +757,53 @@ function commitSearch(){
   run();
 }
 
+/* ---- A-Z browse: alphabetical door beside ranked search ----
+   Letter rows reuse the search hit shape, so keyboard, Enter-to-open,
+   permalinks and new-tab all work unchanged. Clicking the active letter
+   again leaves browse mode and restores the ranked search. */
+let browsing = '';
+function buildAz(){
+  azEl.innerHTML = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', '#']
+    .map(l=>`<button data-l="${l}">${l}</button>`).join('');
+  azEl.querySelectorAll('button').forEach(b=>{
+    b.onclick = () => browse(b.dataset.l);
+  });
+}
+async function browse(letter){
+  closeReader(); closeStats(); hideSuggest();
+  if(browsing === letter){
+    browsing = '';
+    azEl.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    run();
+    return;
+  }
+  browsing = letter;
+  azEl.querySelectorAll('button').forEach(
+    x=>x.classList.toggle('on', x.dataset.l===letter));
+  setState('results');
+  resEl.innerHTML = '';
+  if(inflight) inflight.abort();
+  const ctrl = inflight = new AbortController();
+  try{
+    const r = await fetch(
+      `/api/browse?prefix=${encodeURIComponent(letter)}&n=100`,
+      {signal: ctrl.signal});
+    const d = await r.json();
+    if(ctrl !== inflight) return;
+    hits = d.hits||[]; sel = 0;
+    render();
+  }catch(e){
+    if(e.name === 'AbortError') return;
+    resEl.innerHTML = '<div id="empty">Browse failed. Is the daemon running?</div>';
+  }
+}
+buildAz();
+
 async function run(){
   const q = qEl.value.trim();
   closeReader(); closeStats();
+  browsing = '';
+  azEl.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
   if(q.length < MIN_CHARS){
     hits=[]; setState('home'); resEl.innerHTML='';
     return;

@@ -107,6 +107,27 @@ commands in `START-GUIDE.html`; agent rules in `AGENTS.md`.
    pushed; the ~32 GB of film (`*.codex.db*`, `*.codex-deep.db*`,
    `art.db*`) is git-ignored, as are `.venv/` and `_work/`.
 
+## v2 — A-Z browse (2026-10-09)
+
+ - Alphabetical door beside ranked search: `idx_doc_title` expression index
+   (`upper(substr(title,1,1)), title`) in `schema.py` `CORE_INDEXES`,
+   `Searcher.browse()` (index-backed, keyset `after` paging, `#` bucket for
+   non-A-Z initials), `GET /api/browse` merged across rolls in `codexd.py`,
+   A–Z strip in the canvas reusing hit rows (keyboard, Enter-to-open,
+   permalinks, new-tab all work unchanged; clicking the active letter
+   restores the ranked search).
+ - One-time migration: index built on all 13 cores with the daemon stopped
+   (wikipedia 7.08M rows in 74 s); new builds get it automatically.
+   Measured: covering-index plan, B/S pages ~4 ms, `#` ~260 ms.
+ - Graph decision (from the BM25-only comparison): ranking metadata stays.
+   Pure-BM25 top-1 is a stub on broad queries (`Photosynthesis(board
+   game)`, `Black Holes(album)`); blend + 6× title boost restores the
+   canonical article. Known wrinkle kept: importance can overturn aboutness
+   on small corpora (`spudger` → Bose guide above the spudger page).
+ - Tests: `app/tests/test_browse.py` (5 tests); suite 143 passed.
+
+## Next
+
 ## Next
 
 1. Re-verify `scripts/windows/*.ps1` and `scripts/macos/*.sh` once on real

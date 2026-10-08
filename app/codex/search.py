@@ -376,6 +376,59 @@ class Searcher:
         out.sort(key=lambda h: -h["score"])
         return out[:limit]
 
+    # Index-backed by idx_doc_title (upper-initial, title): equality on the
+    # initial plus a range start for keyset paging, so even the first page
+    # of 'S' on 7M documents never scans.
+    _BROWSE_SQL = """
+        SELECT d.id, d.path, d.title, d.lead, d.importance, d.kind,
+               (SELECT c.title FROM doc c WHERE c.id = d.context_id) AS ctx
+        FROM doc d
+        WHERE upper(substr(d.title, 1, 1)) = ?
+          AND d.title > ?
+        ORDER BY d.title
+        LIMIT ?
+    """
+
+    _BROWSE_MISC_SQL = """
+        SELECT d.id, d.path, d.title, d.lead, d.importance, d.kind,
+               (SELECT c.title FROM doc c WHERE c.id = d.context_id) AS ctx
+        FROM doc d
+        WHERE (upper(substr(d.title, 1, 1)) < 'A'
+               OR upper(substr(d.title, 1, 1)) > 'Z')
+          AND d.title > ?
+        ORDER BY d.title
+        LIMIT ?
+    """
+
+    def browse(self, prefix: str, limit: int = 50, after: str = "") -> list[dict]:
+        """Alphabetical title browse for the A-Z strip.
+
+        Rows carry the same keys as search hits (snippet is the lead's first
+        words), so the canvas renders them through the same rows. `after` is
+        the last title of the previous page. '#' groups every non-A-Z
+        initial -- digits, symbols, non-Latin scripts (upper() is ASCII-only,
+        so accented initials land here too until diacritics are folded).
+        """
+        limit = max(1, min(limit, 200))
+        if prefix == "#":
+            rows = self.con.execute(
+                self._BROWSE_MISC_SQL, (after or "", limit)).fetchall()
+        else:
+            k = (prefix[:1] if prefix else "").upper()
+            if len(k) != 1 or not "A" <= k <= "Z":
+                return []
+            rows = self.con.execute(
+                self._BROWSE_SQL, (k, after or "", limit)).fetchall()
+        out = []
+        for r in rows:
+            out.append({
+                "id": r["id"], "path": r["path"], "title": r["title"],
+                "importance": r["importance"], "kind": r["kind"],
+                "context": r["ctx"],
+                "snippet": " ".join(((r["lead"] or "").split())[:40]),
+            })
+        return out
+
     # -- retrieval --------------------------------------------------------
     def get(self, doc_id: int) -> dict | None:
         r = self.con.execute(
