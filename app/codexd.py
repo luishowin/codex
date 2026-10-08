@@ -53,39 +53,55 @@ def _size(path) -> int:
         return 0
 
 
+def _load_one(path: str) -> str | None:
+    """Load one .codex.db roll, at boot or at runtime. Returns its name.
+
+    Reloading an already-loaded name closes the old handle first, so a
+    rebuilt roll can be swapped in without restarting the projector.
+    """
+    if not path.endswith(".codex.db"):
+        return None
+    name = Path(path).name.replace(".codex.db", "")
+    try:
+        s = Searcher(path)
+    except Exception as exc:
+        print(f"  !! {name}: {exc}", file=sys.stderr)
+        return None
+    old = CODEXES.pop(name, None)
+    if old is not None:
+        try:
+            old.close()
+        except Exception:
+            pass
+    CODEXES[name] = s
+    row = dict(s.con.execute("SELECT key, value FROM codex_meta").fetchall())
+    n = s.con.execute("SELECT COUNT(*) FROM doc").fetchone()[0]
+    words = s.con.execute("SELECT SUM(word_count) FROM doc").fetchone()[0]
+    META[name] = {
+        "name": name, "docs": n, "deep": s.has_deep,
+        "title": row.get("title", name),
+        "source": row.get("source_zim", ""),
+        "date": row.get("zim_date", ""),
+        "built": row.get("built_at", ""),
+        "words": words or 0,
+        "zstd_level": row.get("zstd_level", ""),
+        "schema": row.get("schema_version", ""),
+        "adapter": row.get("adapter", ""),
+        "language": row.get("language", ""),
+        # Lets the UI show what the archive cost against what it came
+        # from -- the single most telling number about a codex.
+        "source_bytes": int(row.get("source_bytes") or 0),
+        "core_bytes": _size(s.core_path),
+        "deep_bytes": _size(s.deep_path) if s.deep_path else 0,
+    }
+    print(f"  loaded {name}: {n:,} docs, deep={s.has_deep}")
+    return name
+
+
 def load_codexes(paths: list[str]) -> None:
     for pattern in paths:
         for p in sorted(glob.glob(pattern)):
-            if not p.endswith(".codex.db"):
-                continue
-            name = Path(p).name.replace(".codex.db", "")
-            try:
-                s = Searcher(p)
-            except Exception as exc:
-                print(f"  !! {name}: {exc}", file=sys.stderr)
-                continue
-            CODEXES[name] = s
-            row = dict(s.con.execute("SELECT key, value FROM codex_meta").fetchall())
-            n = s.con.execute("SELECT COUNT(*) FROM doc").fetchone()[0]
-            words = s.con.execute("SELECT SUM(word_count) FROM doc").fetchone()[0]
-            META[name] = {
-                "name": name, "docs": n, "deep": s.has_deep,
-                "title": row.get("title", name),
-                "source": row.get("source_zim", ""),
-                "date": row.get("zim_date", ""),
-                "built": row.get("built_at", ""),
-                "words": words or 0,
-                "zstd_level": row.get("zstd_level", ""),
-                "schema": row.get("schema_version", ""),
-                "adapter": row.get("adapter", ""),
-                "language": row.get("language", ""),
-                # Lets the UI show what the archive cost against what it came
-                # from -- the single most telling number about a codex.
-                "source_bytes": int(row.get("source_bytes") or 0),
-                "core_bytes": _size(s.core_path),
-                "deep_bytes": _size(s.deep_path) if s.deep_path else 0,
-            }
-            print(f"  loaded {name}: {n:,} docs, deep={s.has_deep}")
+            _load_one(p)
 
 
 def _search_one(name: str, q: str, limit: int, deep: bool) -> dict:
@@ -272,6 +288,39 @@ class Handler(BaseHTTPRequestHandler):
             doc["related"] = s.related(int(doc_id))
             doc["codex"] = name
             return self._json(doc)
+
+        return self._json({"error": "not found"}, 404)
+
+    def do_POST(self) -> None:
+        # Roll management: swap film while the projector runs. Same trust
+        # model as the rest of the API (loopback by default, no auth) --
+        # `path` may point at any readable .codex.db on the machine.
+        u = urlparse(self.path)
+        qs = parse_qs(u.query)
+        one = lambda k, d=None: (qs.get(k) or [d])[0]
+
+        if u.path == "/api/load":
+            raw = one("path", "") or ""
+            loaded = []
+            for p in sorted(glob.glob(raw)):
+                name = _load_one(p)
+                if name is not None:
+                    loaded.append(name)
+            return self._json({"loaded": loaded,
+                               "codexes": sorted(CODEXES)})
+
+        if u.path == "/api/unload":
+            name = one("codex", "") or ""
+            s = CODEXES.pop(name, None)
+            if s is None:
+                return self._json({"error": "not loaded"}, 404)
+            try:
+                s.close()
+            except Exception:
+                pass
+            META.pop(name, None)
+            return self._json({"unloaded": name,
+                               "codexes": sorted(CODEXES)})
 
         return self._json({"error": "not found"}, 404)
 
