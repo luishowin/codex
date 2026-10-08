@@ -211,7 +211,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._static("index.html")
 
         if u.path == "/api/health":
-            return self._json({"ok": True, "codexes": list(META.values()),
+            return self._json({"ok": True, "api": 1,
+                               "codexes": list(META.values()),
                                "art": ART.stats() if ART else None})
 
         # Image bytes. Content is immutable for a given slug -- a different
