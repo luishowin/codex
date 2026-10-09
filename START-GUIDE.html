@@ -129,7 +129,7 @@ footer .serif{font-size:14px}
 
 <section id="quickstart">
   <h2><span class="k">02</span>Quick start</h2>
-  <p class="lead">One command starts the daemon, waits until it is healthy, and opens the web UI in your browser. Safe to run twice: it detects a running daemon and exits. First, a one-time Python environment (the start script uses <span class="kbd">.venv</span> when present; without it, it falls back to the system interpreter, which lacks the dependencies and fails after a long wait):</p>
+  <p class="lead">One command starts the daemon, waits until it is healthy, and opens the web UI in your browser. Safe to run twice: it detects a running daemon and exits. Running needs only the system Python — no environment. A venv is needed solely for cutting film, tools, and tests (one time):</p>
   <div class="cmdrow"><pre class="cmd">python3 -m venv .venv && .venv/bin/pip install libzim selectolax zstandard numpy Pillow pytest</pre><button class="copybtn">copy</button></div>
 
   <div class="tabs" role="tablist">

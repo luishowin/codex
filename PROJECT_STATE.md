@@ -131,6 +131,33 @@ commands in `START-GUIDE.html`; agent rules in `AGENTS.md`.
    to `/read` permalinks; empty letters hide the row). Verified live
    (H → 8 cards); `test_art.py` +3 shelf tests, suite 146 passed.
 
+## v2 — stdlib projector, funnel, recipe (2026-10-09, in progress)
+
+ - Runtime is zstd-free: bodies zlib-6 everywhere (measured +7.5% on long
+   prose, smaller on short docs; cores 22.3 → 23.0 GB), writers
+   flipped (`build.py`, `milmed_build.py`, `--compress-level`), pass-0 dict
+   training deleted, `search.py`/`index.py` zlib-only. Fence:
+   `requirements-build.txt` (build-only deps) +
+   `tests/test_stdlib_runtime.py` (transitive closure from `codexd.py`,
+   green). `try_hygiene.py` repaired to read through `Searcher`.
+ - Funnel: `codex/ingest.py` (`ZimIngester`, `MarkdownIngester`, path-identity
+   contract), `build_stream` + shared `finish_build` in `build.py`
+   (`_extract_one` moved, deferred graph/index imports documented),
+   `codexctl build <dir>` auto-routes to markdown, `index.build_deep`
+   reads the codec from core meta. Proof: `test_funnel.py` builds 3 linked
+   markdown docs hermetically (graph edges resolve, search/browse/get work).
+   `milmed_build` flipped to zlib but not yet an ingester (tools→codex
+   layering); `calibrate.py` still projects in zstd ratios.
+ - Recipe: README "Fresh machine" (system python3 serves, venv only for
+   building), guide/AGENTS reframed the same way.
+ - Migration state: 12/13 rolls transcoded, verified, serving. wikipedia
+   (7.08M bodies) fully transcoded — 0 zstd-magic rows in a full scan —
+   but its 21 GB WAL is still checkpointing and the roll is unloaded
+   pending reload. Backups in `_work/transcode-bak/` (21 GB) stay until the
+   reload verifies. Still pending: reload, full-suite re-run, stock-python3
+   boot proof, backup deletion.
+ - Suite 149 passed (fence + funnel included) with 12 rolls loaded.
+
 ## Next
 
 ## Next

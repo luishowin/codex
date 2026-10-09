@@ -45,15 +45,11 @@ def main(core_path: str, keep_old: bool = False) -> int:
 
     core = sqlite3.connect(f"file:{core_p}?mode=ro", uri=True)
     n_docs = core.execute("SELECT COUNT(*) FROM doc").fetchone()[0]
-    row = core.execute("SELECT dict FROM zdict WHERE id=1").fetchone()
-    zdict_bytes = bytes(row[0]) if row else b""
 
     log(f"core     {core_p}  ({n_docs:,} docs)")
     log(f"deep     {deep_p}"
         f"{'  (' + human(deep_p.stat().st_size) + ')' if deep_p.exists() else '  (absent)'}")
     log(f"building {new_p}")
-    if zdict_bytes:
-        log(f"  using stored zstd dictionary ({len(zdict_bytes)/1024:,.0f} KB)")
 
     # Build beside the live file; a half-written index must never replace a
     # working one.
@@ -63,7 +59,7 @@ def main(core_path: str, keep_old: bool = False) -> int:
     init_deep(deep)
     t0 = time.perf_counter()
     try:
-        I.build_deep(core, deep, zdict_bytes)
+        I.build_deep(core, deep)
         set_meta(deep, table="deep_meta", schema_version=SCHEMA_VERSION,
                  core=core_p.name, docs=n_docs,
                  rebuilt_at=time.strftime("%Y-%m-%dT%H:%M:%S"))

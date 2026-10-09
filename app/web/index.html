@@ -1069,7 +1069,7 @@ function showStats(){
           ${kv('deep', c.deep ? bytes(c.deep_bytes) : 'off', !c.deep)}
           ${kv('of source', ratio)}
           ${kv('adapter', esc(c.adapter||'n/a'))}
-          ${kv('zstd', c.zstd_level || 'n/a', !c.zstd_level)}
+          ${kv('codec', (c.compress_level ? 'zlib ' + c.compress_level : (c.zstd_level ? 'zstd ' + c.zstd_level : 'n/a')), !(c.compress_level || c.zstd_level))}
           ${kv('built', esc((c.built||'n/a').slice(0,10)))}
         </div></div>`;
     }).join('') +
@@ -1173,7 +1173,7 @@ function renderBento(d){
       '<span class="xp-cell-top"><span class="xp-cell-name">' + esc(c.title || pretty(c.name)) + '</span><span class="xp-cell-arrow">→</span></span>' +
       '<span class="xp-cell-num">' + num(c.docs) + '<em>documents</em></span>' +
       '<span class="xp-cell-meta">' + bytes(total) + ' · ' + num(c.words||0) + ' words</span>' +
-      '<span class="xp-cell-chip">' + esc(c.adapter || 'generic') + (c.zstd_level ? ' · zstd ' + esc(c.zstd_level) : '') + '</span>' +
+      '<span class="xp-cell-chip">' + esc(c.adapter || 'generic') + (c.compress_level ? ' · zlib ' + esc(c.compress_level) : (c.zstd_level ? ' · zstd ' + esc(c.zstd_level) : '')) + '</span>' +
     '</a>';
   });
   if(d.art){

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """codexctl - build and inspect codex archives.
 
-    codexctl build  <source.zim> [--out DIR] [--name NAME] [--workers N]
+    codexctl build  <source.zim|source-dir> [--out DIR] [--name NAME] [--workers N]
     codexctl info   <codex.db>
     codexctl search <codex.db> <query> [--deep] [-n N]
 """
@@ -19,12 +19,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from libzim.reader import Archive
 
 from codex import build as B
-from codex import graph as G
-from codex import index as I
+from codex.ingest import pick_ingester
 from codex.paths import data_dir
-from codex.schema import (BUILD_PRAGMAS, READ_PRAGMAS, SCHEMA_VERSION,
-                          apply_pragmas, get_meta, init_core, init_core_indexes,
-                          init_deep, init_fts_quick, set_meta)
+from codex.schema import (BUILD_PRAGMAS, SCHEMA_VERSION,
+                          apply_pragmas, get_meta, init_core, set_meta)
 import sqlite3
 
 
@@ -39,13 +37,16 @@ def human(n: float) -> str:
 def cmd_build(args) -> int:
     src = Path(args.source)
     if not src.exists():
-        print(f"no such archive: {src}", file=sys.stderr)
+        print(f"no such source: {src}", file=sys.stderr)
         return 2
+    if src.is_dir():
+        return cmd_build_stream(args)
 
     name = args.name or src.stem
     paths = B.plan_paths(args.out, name, args.scratch)
     workers = args.workers or max(1, (os.cpu_count() or 4) - 2)
-    level = args.zstd_level if args.zstd_level is not None else B.ZSTD_LEVEL
+    level = (args.compress_level if args.compress_level is not None
+             else B.ZLIB_LEVEL)
 
     a = Archive(str(src))
     meta = B.archive_meta(a)
@@ -54,7 +55,7 @@ def cmd_build(args) -> int:
 
     B.log(f"source   {src.name}  ({human(src.stat().st_size)})")
     B.log(f"entries  {n_entries:,}   adapter {adapter.name}   workers {workers}"
-          f"   zstd {level}")
+          f"   zlib {level}")
     B.log(f"core     {paths.core}")
     B.log(f"deep     {paths.deep}")
     B.log(f"scratch  {paths.workdir}")
@@ -82,18 +83,6 @@ def cmd_build(args) -> int:
     state = get_meta(con)
     resume_entry = int(state.get("resume_entry", "0") or 0)
 
-    # --- pass 0: dictionary
-    zdict_bytes = b""
-    row = con.execute("SELECT dict FROM zdict WHERE id=1").fetchone()
-    if row is not None:
-        zdict_bytes = bytes(row[0])
-        B.log(f"pass 0: reusing stored dictionary ({len(zdict_bytes)/1024:,.0f} KB)")
-    elif not args.no_dict:
-        zdict_bytes = B.train_dictionary(str(src), n_entries, workers, level=level)
-        if zdict_bytes:
-            con.execute("INSERT OR REPLACE INTO zdict(id, dict) VALUES(1, ?)",
-                        (zdict_bytes,))
-
     set_meta(con,
              schema_version=SCHEMA_VERSION,
              source_zim=src.name,
@@ -103,7 +92,8 @@ def cmd_build(args) -> int:
              title=meta.get("Title", ""),
              language=meta.get("Language", ""),
              zim_date=meta.get("Date", ""),
-             zstd_level=level,
+             body_codec="zlib",
+             compress_level=level,
              built_by="codexctl")
 
     # --- pass 1: extract
@@ -111,60 +101,18 @@ def cmd_build(args) -> int:
         B.log(f"pass 1: already complete ({resume_entry:,} entries), skipping")
     else:
         B.extract_pass(con, str(src), n_entries, workers, paths.edges,
-                       zdict_bytes, resume_from=resume_entry, level=level)
+                       resume_from=resume_entry, level=level)
 
     n_docs = con.execute("SELECT COUNT(*) FROM doc").fetchone()[0]
     if n_docs == 0:
         B.log("no documents extracted - aborting")
         return 1
 
-    B.log("building core indexes")
-    init_core_indexes(con)
-
-    # --- pass 2: graph
-    if state.get("graph_done") == "1" and not args.force_graph:
-        B.log("pass 2: already complete, skipping")
-    else:
-        max_id = con.execute("SELECT MAX(id) FROM doc").fetchone()[0]
-        if paths.edges.exists():
-            # Pass 2 holds the path->id map and the edge sort buffers on the
-            # Python heap. The 1 GiB build page cache is the one thing here we
-            # can hand back while it does, so do that and restore it after.
-            con.execute("PRAGMA cache_size=-262144")   # 256 MiB
-            try:
-                stats = G.resolve_and_rank(con, paths.edges, max_id)
-            finally:
-                apply_pragmas(con, BUILD_PRAGMAS)
-            set_meta(con, graph_done="1", **{f"graph_{k}": v
-                                             for k, v in stats.items()})
-        else:
-            B.log("pass 2: no edge file present, skipping graph")
-
-    # --- pass 3: indexes
-    init_fts_quick(con)
-    I.build_quick(con)
-
-    if not args.no_deep:
-        deep = sqlite3.connect(str(paths.deep), isolation_level=None)
-        apply_pragmas(deep, BUILD_PRAGMAS)
-        init_deep(deep)
-        I.build_deep(con, deep, zdict_bytes)
-        set_meta(deep, table="deep_meta", schema_version=SCHEMA_VERSION,
-                 core=paths.core.name, docs=n_docs)
-        deep.execute("PRAGMA journal_mode=WAL")
-        deep.close()
-
-    set_meta(con, docs=n_docs, built_at=time.strftime("%Y-%m-%dT%H:%M:%S"))
-    B.log("vacuuming core")
-    con.execute("PRAGMA journal_mode=WAL")
-    # VACUUM rebuilds the database into a temporary copy, and that copy honours
-    # temp_store. BUILD_PRAGMAS sets temp_store=MEMORY, which on a multi-GB core
-    # means trying to hold the entire rebuilt database in RAM. Put it on the
-    # scratch volume instead -- that is what --scratch is for.
-    os.environ.setdefault("SQLITE_TMPDIR", str(paths.workdir))
-    con.execute("PRAGMA temp_store=FILE")
-    con.execute("VACUUM")
-    con.close()
+    n_docs = B.finish_build(con, paths, state=state, no_deep=args.no_deep,
+                            force_graph=args.force_graph)
+    if n_docs == 0:
+        B.log("no documents extracted - aborting")
+        return 1
 
     core_sz = paths.core.stat().st_size
     deep_sz = paths.deep.stat().st_size if paths.deep.exists() else 0
@@ -176,6 +124,42 @@ def cmd_build(args) -> int:
     B.log(f"  deep   {human(deep_sz)}")
     B.log(f"  total  {human(total)}  vs  {human(src_sz)} source  "
           f"=  {src_sz/max(total,1):.1f}x smaller")
+    return 0
+
+
+def cmd_build_stream(args) -> int:
+    """Build from a directory (markdown ingester) through the funnel."""
+    src = Path(args.source)
+    name = args.name or src.name
+    paths = B.plan_paths(args.out, name, args.scratch)
+    level = (args.compress_level if args.compress_level is not None
+             else B.ZLIB_LEVEL)
+    ingester = pick_ingester(str(src))
+    src_bytes = sum(p.stat().st_size for p in src.rglob("*") if p.is_file())
+
+    B.log(f"source   {src}  ({ingester.name}, {human(src_bytes)})")
+    B.log(f"core     {paths.core}")
+    B.log(f"deep     {paths.deep}")
+    B.log(f"scratch  {paths.workdir}")
+
+    n_docs = B.build_stream(
+        paths, ingester, str(src),
+        {"source_dir": src.name, "source_bytes": src_bytes,
+         "title": name, "language": ""},
+        level=level, no_deep=args.no_deep)
+    if n_docs == 0:
+        B.log("no documents extracted - aborting")
+        return 1
+
+    core_sz = paths.core.stat().st_size
+    deep_sz = paths.deep.stat().st_size if paths.deep.exists() else 0
+    total = core_sz + deep_sz
+    B.log("")
+    B.log(f"DONE  {n_docs:,} documents")
+    B.log(f"  core   {human(core_sz)}")
+    B.log(f"  deep   {human(deep_sz)}")
+    B.log(f"  total  {human(total)}  vs  {human(src_bytes)} source  "
+          f"=  {src_bytes/max(total,1):.1f}x smaller")
     return 0
 
 
@@ -234,7 +218,8 @@ def main() -> int:
     p = argparse.ArgumentParser(prog="codexctl")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    b = sub.add_parser("build", help="build a codex from a ZIM archive")
+    b = sub.add_parser("build", help="build a codex from a ZIM archive "
+                                             "or a source directory")
     b.add_argument("source")
     b.add_argument("--out", default=str(data_dir()))
     b.add_argument("--name", default=None)
@@ -243,11 +228,9 @@ def main() -> int:
                    help="directory for the transient edge file (keep off the "
                         "volume holding the source archive)")
     b.add_argument("--no-deep", action="store_true")
-    b.add_argument("--no-dict", action="store_true")
     b.add_argument("--force-graph", action="store_true")
-    b.add_argument("--zstd-level", type=int, default=None,
-                   help=f"body compression level (default {B.ZSTD_LEVEL}); "
-                        f"19 is ~0.4%% smaller and ~70%% slower to compress")
+    b.add_argument("--compress-level", type=int, default=None,
+                   help=f"zlib body compression level (default {B.ZLIB_LEVEL})")
     b.add_argument("--no-preflight", action="store_true",
                    help="skip the sampled size projection and free-space check")
     b.set_defaults(fn=cmd_build)

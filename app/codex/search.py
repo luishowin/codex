@@ -17,10 +17,9 @@ import sqlite3
 import sys
 import threading
 import time
+import zlib
 from contextlib import contextmanager
 from pathlib import Path
-
-import zstandard as zstd
 
 from .model import reflow
 from .schema import FLAG_IMAGE_DEPENDENT
@@ -118,11 +117,6 @@ class Searcher:
         self.has_deep = self.deep_path is not None
 
         self._local = threading.local()
-
-        row = self.con.execute("SELECT dict FROM zdict WHERE id=1").fetchone()
-        self._dctx = (zstd.ZstdDecompressor(
-            dict_data=zstd.ZstdCompressionDict(bytes(row[0]))) if row
-            else zstd.ZstdDecompressor())
 
     # -- connections ------------------------------------------------------
     def _connect(self) -> sqlite3.Connection:
@@ -441,7 +435,9 @@ class Searcher:
         sections = []
         if r["body"]:
             try:
-                sections = json.loads(self._dctx.decompress(r["body"]))
+                # Bodies are zlib JSON. Anything else is pre-2.0 film, which
+                # this projector no longer reads (see SPEC).
+                sections = json.loads(zlib.decompress(r["body"]))
             except Exception:
                 sections = []
         # Repair the extraction artefact described in model.reflow. Done here so

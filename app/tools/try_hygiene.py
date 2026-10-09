@@ -5,23 +5,19 @@ sentences before a rebuild bakes them in.
 """
 from __future__ import annotations
 
-import json
-import sqlite3
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import zstandard as zstd
-
 from codex.hygiene import clean_text, _DEPENDENT
 from codex.paths import data_dir
+from codex.search import Searcher
 
-db = sqlite3.connect(
-    f"file:{data_dir() / 'ifixit.codex.db'}?mode=ro", uri=True)
-zd = zstd.ZstdCompressionDict(
-    db.execute("SELECT dict FROM zdict WHERE id=1").fetchone()[0])
-dctx = zstd.ZstdDecompressor(dict_data=zd)
+# Bodies are read through the projector's own reader, so this tracks
+# whatever codec the film uses (zlib since the 2.0 transcode).
+s = Searcher(str(data_dir() / "ifixit.codex.db"))
+db = s.con
 
 LIMIT = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
 
@@ -29,11 +25,12 @@ changed = dropped_all = flagged = scanned = 0
 examples: list[tuple[str, str]] = []
 flag_examples: list[str] = []
 
-for _id, body in db.execute(
-        "SELECT id, body FROM doc WHERE body IS NOT NULL "
+for (_id,) in db.execute(
+        "SELECT id FROM doc WHERE body IS NOT NULL "
         "ORDER BY importance DESC LIMIT ?", (LIMIT,)):
     try:
-        secs = json.loads(dctx.decompress(body))
+        doc = s.get(_id)
+        secs = doc["sections"] if doc else []
     except Exception:
         continue
     scanned += 1

@@ -14,7 +14,7 @@ ATTACHed.
 
 | table | columns |
 |---|---|
-| `codex_meta` | `key TEXT PK, value TEXT` (title, source_zim, zim_date, built_at, words, zstd_level, schema_version, adapter, language, source_bytes, …) |
+| `codex_meta` | `key TEXT PK, value TEXT` (title, source_zim, zim_date, built_at, words, zstd_level, body_codec (`zlib` once transcoded; absent means v1 zstd), schema_version, adapter, language, source_bytes, …) |
 | `zdict` | `id INTEGER PK, dict BLOB` (zstd dictionaries; `doc.dict_id` → `zdict.id`) |
 | `doc` | `id PK, path TEXT, title TEXT, kind INTEGER, importance REAL, in_degree INTEGER, word_count INTEGER, lead TEXT, body BLOB, meta TEXT (JSON), dict_id INTEGER, context_id INTEGER → doc.id, flags INTEGER` |
 | `redirect` | `from_path TEXT PK, to_id INTEGER → doc.id` (title aliases) |
@@ -29,8 +29,11 @@ doc(importance DESC)`, `idx_doc_title ON doc(upper(substr(title,1,1)), title)`.
 3 category. `flags` bit 0: text referred to pictures the archive couldn't
 supply (kept verbatim, shown with a warning).
 
-`doc.body`: zstd-compressed JSON (dictionary `zdict[dict_id]`), a list of
-sections: prose `{h?, t}`, tables `{h?, k:'table', headers[], rows[][]}`.
+`doc.body`: zlib level 6 compressed JSON sections (prose `{h?, t}`, tables
+`{h?, k:'table', headers[], rows[][]}`). Pre-2.0 v1 film used zstd with the
+`zdict` dictionary; this projector no longer reads it — transcode first
+(decompress with dict `zdict[1]`, recompress, set
+`codex_meta.body_codec='zlib'`).
 `doc.lead`: plain text, readable without decompressing. `doc.meta`: optional
 JSON (infobox/tools, source-dependent).
 

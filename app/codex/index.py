@@ -11,8 +11,7 @@ from __future__ import annotations
 
 import json
 import time
-
-import zstandard as zstd
+import zlib
 
 from .build import log
 
@@ -35,16 +34,17 @@ def build_quick(con) -> None:
     log(f"  indexed {n:,} docs in {(time.perf_counter()-t0)/60:,.1f} min")
 
 
-def build_deep(core_con, deep_con, zdict_bytes: bytes) -> None:
+def build_deep(core_con, deep_con) -> None:
     """Populate the contentless full-body index.
 
     fts_deep lives in the deep file but its rowids are doc ids from the core
     file, which is what lets the two be queried together once ATTACHed.
+    Bodies are zlib JSON (see SPEC); pre-2.0 zstd film must be transcoded
+    before a rebuild.
     """
     log("pass 3b: building fts_deep (full body)")
     t0 = time.perf_counter()
-    dctx = (zstd.ZstdDecompressor(dict_data=zstd.ZstdCompressionDict(zdict_bytes))
-            if zdict_bytes else zstd.ZstdDecompressor())
+    dec = zlib.decompress
 
     # Contentless tables reject plain DELETE for the same reason; 'delete-all'
     # is the supported reset.
@@ -56,7 +56,7 @@ def build_deep(core_con, deep_con, zdict_bytes: bytes) -> None:
     cur = core_con.execute(
         "SELECT id, title, COALESCE(lead,''), body FROM doc ORDER BY id")
     for doc_id, title, lead, body in cur:
-        text = _body_text(dctx, body)
+        text = _body_text(dec, body)
         full = f"{title}\n{lead}\n{text}" if text else f"{title}\n{lead}"
         batch.append((doc_id, full))
         if len(batch) >= BATCH:
@@ -76,11 +76,11 @@ def build_deep(core_con, deep_con, zdict_bytes: bytes) -> None:
     log(f"  indexed {n:,} docs in {(time.perf_counter()-t0)/60:,.1f} min")
 
 
-def _body_text(dctx, body: bytes | None) -> str:
+def _body_text(dec, body: bytes | None) -> str:
     if not body:
         return ""
     try:
-        raw = dctx.decompress(body)
+        raw = dec(body)
     except Exception:
         try:
             raw = bytes(body)

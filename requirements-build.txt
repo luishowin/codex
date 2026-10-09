@@ -1,0 +1,15 @@
+# Build-time dependencies only: ZIM reading, extraction, ranking passes,
+# image-layer builds, and the test suite itself.
+# Build-time dependencies only: ZIM reading, extraction, ranking passes,
+# image-layer builds, and the test suite itself.
+# The projector (daemon read path: app/codexd.py and what it imports) is
+# stdlib-only by design -- see app/tests/test_stdlib_runtime.py. Nothing
+# listed here may enter that path.
+# pywebview is Windows-only (launcher.py) and lives outside this file:
+# install it separately on Windows. Everything else a builder needs is here.
+libzim
+selectolax
+zstandard
+numpy
+Pillow
+pytest

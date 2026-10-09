@@ -1,15 +1,21 @@
 """The codex build pipeline.
 
-Streams a ZIM archive into a codex without ever materialising it on disk. The
+Streams a source into a codex without ever materialising it on disk. The
 source is opened read-only and never modified.
 
-    pass 0  sample + train the shared zstd dictionary
     pass 1  extract, compress, write doc rows and the outbound edge file
     pass 2  resolve edges, drop dead ends, PageRank, write importance + related
     pass 3  build the FTS indexes
 
 Passes 1-3 each checkpoint, so an interrupted overnight run resumes rather than
 restarting.
+
+Bodies are zlib-compressed JSON (level ZLIB_LEVEL, no dictionary): the
+projector is stdlib-only, so the one third-party runtime dependency had to
+go. Measured on 1,000 real Wikipedia bodies, zlib-6 and zlib-9 compress
+identically and take the same time; against the old zstd-15+dict, zlib is
++7.5% on long prose and smaller on short docs. Decode cost is microseconds
+per document either way.
 """
 from __future__ import annotations
 
@@ -17,17 +23,19 @@ import hashlib
 import json
 import multiprocessing as mp
 import os
+import sqlite3
 import struct
 import sys
 import time
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-import zstandard as zstd
 from libzim.reader import Archive
 
 from .adapters import pick_adapter
+from .ingest import _extract_one, archive_meta
 from .model import Doc
 from .schema import (BUILD_PRAGMAS, apply_pragmas, get_meta, init_core,
                      init_core_indexes, init_deep, init_fts_quick, set_meta,
@@ -36,12 +44,8 @@ from .schema import (BUILD_PRAGMAS, apply_pragmas, get_meta, init_core,
 # (src_id, dst_path_hash) written during extraction; resolved in pass 2.
 EDGE_DTYPE = np.dtype([("src", "<u4"), ("dst", "<u8")])
 EDGE_STRUCT = struct.Struct("<IQ")
-DICT_SIZE = 112 * 1024
-# Level 15, not 19. Measured over 584 real Wikipedia articles against a trained
-# dictionary: 19 costs 0.94 ms/doc and stores 31.05% of the JSON, 15 costs
-# 0.55 ms/doc and stores 31.19% -- about 30 MB more on a 7.9 GB body store, for
-# 4% off the wall time of the longest pass. Override with --zstd-level.
-ZSTD_LEVEL = 15
+# zlib 6: identical size and pace to 9 on sampled bodies (see module doc).
+ZLIB_LEVEL = 6
 CHUNK = 2000          # entry ids per worker task
 CHECKPOINT_EVERY = 50_000
 CHECKPOINT_SECONDS = 120.0   # ...or this long, whichever comes first
@@ -60,18 +64,6 @@ def path_hash(path: str) -> int:
     )
 
 
-def archive_meta(a: Archive) -> dict:
-    meta = {}
-    for k in a.metadata_keys:
-        if k.startswith("Illustration"):
-            continue
-        try:
-            meta[k] = bytes(a.get_metadata(k)).decode("utf-8", "replace")
-        except Exception:
-            pass
-    return meta
-
-
 # --------------------------------------------------------------------------
 # worker
 # --------------------------------------------------------------------------
@@ -79,9 +71,9 @@ def archive_meta(a: Archive) -> dict:
 _W: dict = {}
 
 
-def _worker_init(zim_path: str, zdict_bytes: bytes | None,
-                 level: int = ZSTD_LEVEL) -> None:
-    """Each process gets its own Archive handle and compressor."""
+def _worker_init(zim_path: str, level: int = ZLIB_LEVEL) -> None:
+    """Each process gets its own Archive handle. Compression is plain zlib,
+    so there is no dictionary to share and nothing to train (pass 0 is gone)."""
     a = Archive(zim_path)
     _W["archive"] = a
     adapter = pick_adapter(archive_meta(a))
@@ -89,46 +81,7 @@ def _worker_init(zim_path: str, zdict_bytes: bytes | None,
     # build it once per worker rather than once per entry.
     adapter.prepare(a)
     _W["adapter"] = adapter
-    if zdict_bytes:
-        d = zstd.ZstdCompressionDict(zdict_bytes)
-        _W["cctx"] = zstd.ZstdCompressor(level=level, dict_data=d)
-    else:
-        _W["cctx"] = None
-
-
-def _extract_one(a: Archive, adapter, i: int) -> tuple[str, object] | None:
-    """Return ('doc', payload) | ('redirect', payload) | None."""
-    try:
-        e = a._get_entry_by_id(i)
-    except Exception:
-        return None
-    path = e.path
-    if adapter.skip_path(path):
-        return None
-    try:
-        if e.is_redirect:
-            target = e.get_redirect_entry().path
-            return ("redirect", (path, target))
-        item = e.get_item()
-        if not item.mimetype.startswith("text/html"):
-            return None
-        raw = bytes(item.content).decode("utf-8", "replace")
-        # The body is not always in the entry we are standing on. A crawled
-        # single-page app stores a routing stub here and the prose in a sibling
-        # JSON entry, so the adapter gets to say where to actually read from.
-        raw = adapter.source_for(a, e, raw)
-        if raw is None:
-            return None
-    except Exception:
-        return None
-
-    try:
-        doc = adapter.parse(raw, path, e.title)
-    except Exception:
-        return None
-    if doc is None or not adapter.should_keep(doc):
-        return None
-    return ("doc", doc)
+    _W["level"] = level
 
 
 def _worker_chunk(args: tuple[int, int]) -> list[tuple]:
@@ -136,7 +89,7 @@ def _worker_chunk(args: tuple[int, int]) -> list[tuple]:
     lo, hi = args
     a = _W["archive"]
     adapter = _W["adapter"]
-    cctx = _W["cctx"]
+    level = _W["level"]
     out: list[tuple] = []
 
     for i in range(lo, hi):
@@ -152,29 +105,12 @@ def _worker_chunk(args: tuple[int, int]) -> list[tuple]:
         body_json = json.dumps([s.as_json() for s in doc.sections],
                                ensure_ascii=False, separators=(",", ":")
                                ).encode("utf-8")
-        body = cctx.compress(body_json) if cctx else body_json
+        body = zlib.compress(body_json, level)
         meta = json.dumps(doc.meta, ensure_ascii=False,
                           separators=(",", ":")) if doc.meta else None
         link_hashes = [path_hash(p) for p in doc.links]
         out.append(("D", doc.path, doc.title, doc.kind, doc.word_count,
                     doc.lead, body, meta, link_hashes, doc.flags))
-    return out
-
-
-def _sample_chunk(args: tuple[int, int]) -> list[bytes]:
-    """Pass 0: collect body JSON for dictionary training."""
-    lo, hi = args
-    a, adapter = _W["archive"], _W["adapter"]
-    out = []
-    for i in range(lo, hi):
-        got = _extract_one(a, adapter, i)
-        if got is None or got[0] != "doc":
-            continue
-        doc: Doc = got[1]
-        b = json.dumps([s.as_json() for s in doc.sections],
-                       ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-        if len(b) > 128:
-            out.append(b)
     return out
 
 
@@ -212,7 +148,7 @@ def _gb(n: float) -> str:
 
 
 def preflight(zim_path: str, n_entries: int, paths: "BuildPaths",
-              level: int = ZSTD_LEVEL, sample: int = 400) -> dict:
+              level: int = ZLIB_LEVEL, sample: int = 400) -> dict:
     """Sample the archive to project output size, then check the disk can hold it.
 
     Measured rather than assumed: keep rate, links per document and compressed
@@ -231,7 +167,6 @@ def preflight(zim_path: str, n_entries: int, paths: "BuildPaths",
     adapter.prepare(a)
     rng = random.Random(1234)
     ids = rng.sample(range(n_entries), min(n_entries, sample * 30))
-    cctx = zstd.ZstdCompressor(level=level)
 
     n_seen = n_docs = n_links = 0
     body_bytes = lead_bytes = 0
@@ -246,7 +181,7 @@ def preflight(zim_path: str, n_entries: int, paths: "BuildPaths",
         blob = json.dumps([s.as_json() for s in doc.sections],
                           ensure_ascii=False, separators=(",", ":")
                           ).encode("utf-8")
-        body_bytes += len(cctx.compress(blob))
+        body_bytes += len(zlib.compress(blob, level))
         lead_bytes += len(doc.lead.encode("utf-8", "replace"))
         n_links += len(doc.links)
         n_docs += 1
@@ -288,45 +223,6 @@ def preflight(zim_path: str, n_entries: int, paths: "BuildPaths",
     return out
 
 
-def train_dictionary(zim_path: str, n_entries: int, workers: int,
-                     sample_target: int = 12000,
-                     level: int = ZSTD_LEVEL) -> bytes:
-    """Pass 0: train a shared zstd dictionary on a spread-out sample."""
-    log(f"pass 0: sampling for dictionary training (target {sample_target:,} docs)")
-    # Spread the sample across the whole archive so it is not biased toward one
-    # alphabetical region.
-    stride = max(1, n_entries // max(sample_target * 6, 1))
-    ranges = [(i, min(i + 40, n_entries))
-              for i in range(0, n_entries, max(stride * 40, 40))]
-
-    samples: list[bytes] = []
-    with mp.Pool(workers, initializer=_worker_init,
-                 initargs=(zim_path, None, level)) as pool:
-        for got in pool.imap_unordered(_sample_chunk, ranges, chunksize=4):
-            samples.extend(got)
-            if len(samples) >= sample_target:
-                break
-
-    if len(samples) < 64:
-        log(f"  only {len(samples)} samples; skipping dictionary")
-        return b""
-    # Train at the level the bodies will be compressed at, so the dictionary is
-    # tuned for the encoder that will actually use it.
-    #
-    # This is single-threaded and roughly linear in sample bytes -- about 85s
-    # per 70 MB -- so it looks like a hang after the parallel sampling above.
-    # Resist the urge to feed it less: measured on held-out Wikipedia bodies,
-    # training on 4 MB instead of 71 MB costs 5.1% on every compressed body
-    # thereafter, which is far more than the couple of minutes it saves.
-    mb = sum(len(s) for s in samples) / 1e6
-    log(f"  training on {len(samples):,} docs / {mb:,.0f} MB "
-        f"(single-threaded, ~{mb*85/70:,.0f}s)")
-    zd = zstd.train_dictionary(DICT_SIZE, samples, level=level)
-    raw = zd.as_bytes()
-    log(f"  trained on {len(samples):,} docs -> {len(raw)/1024:,.0f} KB dictionary")
-    return raw
-
-
 def _hms(seconds: float) -> str:
     seconds = max(int(seconds), 0)
     h, rem = divmod(seconds, 3600)
@@ -360,11 +256,11 @@ def _rewind_edges(con, edges_path: Path) -> None:
 
 
 def extract_pass(con, zim_path: str, n_entries: int, workers: int,
-                 edges_path: Path, zdict_bytes: bytes, resume_from: int = 0,
-                 level: int = ZSTD_LEVEL) -> int:
+                 edges_path: Path, resume_from: int = 0,
+                 level: int = ZLIB_LEVEL) -> int:
     """Pass 1: extract every document, compress, and stream out the edge file."""
     log(f"pass 1: extracting from entry {resume_from:,} of {n_entries:,} "
-        f"across {workers} workers (zstd level {level})")
+        f"across {workers} workers (zlib level {level})")
 
     ranges = [(i, min(i + CHUNK, n_entries))
               for i in range(resume_from, n_entries, CHUNK)]
@@ -383,7 +279,7 @@ def extract_pass(con, zim_path: str, n_entries: int, workers: int,
     mode = "ab" if resume_from else "wb"
     with open(edges_path, mode) as ef, \
             mp.Pool(workers, initializer=_worker_init,
-                    initargs=(zim_path, zdict_bytes or None, level)) as pool:
+                    initargs=(zim_path, level)) as pool:
 
         for got in pool.imap(_worker_chunk, ranges, chunksize=1):
             done_entries += CHUNK
@@ -464,3 +360,121 @@ def _flush(con, doc_rows, red_rows, ef, edge_buf, done, total) -> None:
             red_rows)
     set_meta(con, resume_entry=str(min(done, total)), edge_bytes=str(ef.tell()))
     con.execute("COMMIT")
+
+
+def build_stream(paths: BuildPaths, ingester, source: str, meta: dict,
+                 level: int = ZLIB_LEVEL, no_deep: bool = False) -> int:
+    """Pass 1 from any ingester, then the shared finish. Fresh builds only:
+    existing outputs are deleted, and there is no resume (stream sources are
+    cheap to re-read, unlike a 50 GB archive). New film is always zlib."""
+    for p in (paths.core, paths.deep, paths.edges):
+        p.unlink(missing_ok=True)
+
+    con = sqlite3.connect(str(paths.core), isolation_level=None)
+    apply_pragmas(con, BUILD_PRAGMAS)
+    init_core(con)
+    set_meta(con, schema_version=SCHEMA_VERSION, body_codec="zlib",
+             compress_level=level, built_by="codexctl",
+             adapter=ingester.name, **meta)
+
+    log(f"pass 1: streaming {ingester.name} from {source} (zlib {level})")
+    t0 = time.perf_counter()
+    n_docs = n_redirect = 0
+    next_id = 1
+    doc_rows: list[tuple] = []
+    red_rows: list[tuple] = []
+    edge_buf = bytearray()
+    ef = open(paths.edges, "wb")
+    with ef:
+        for tag, payload in ingester.iter_docs(source):
+            if tag == "redirect":
+                red_rows.append((payload.from_path, payload.to_path))
+                n_redirect += 1
+                continue
+            doc = payload
+            body_json = json.dumps([s.as_json() for s in doc.sections],
+                                   ensure_ascii=False, separators=(",", ":")
+                                   ).encode("utf-8")
+            doc_rows.append((next_id, doc.path, doc.title, doc.kind,
+                             doc.word_count, doc.lead,
+                             zlib.compress(body_json, level),
+                             json.dumps(doc.meta, ensure_ascii=False,
+                                        separators=(",", ":")) if doc.meta else None,
+                             doc.flags))
+            for link in doc.links:
+                edge_buf += EDGE_STRUCT.pack(next_id, path_hash(link))
+            next_id += 1
+            n_docs += 1
+            if len(doc_rows) >= CHECKPOINT_EVERY:
+                _flush(con, doc_rows, red_rows, ef, edge_buf, n_docs, n_docs)
+                doc_rows, red_rows, edge_buf = [], [], bytearray()
+        _flush(con, doc_rows, red_rows, ef, edge_buf, n_docs, n_docs)
+    if not edge_buf and paths.edges.stat().st_size == 0:
+        # No edges: leave no file so finish skips the graph the same way it
+        # does when a ZIM yields nothing linkable, instead of ranking an
+        # empty graph.
+        paths.edges.unlink()
+    log(f"  streamed {n_docs:,} docs, {n_redirect:,} redirects in "
+        f"{(time.perf_counter()-t0)/60:,.1f} min")
+    return finish_build(con, paths, state={}, no_deep=no_deep)
+
+
+def finish_build(con, paths: BuildPaths, state: dict | None = None,
+                 no_deep: bool = False, force_graph: bool = False) -> int:
+    """Passes 2-3 plus vacuum. Shared by the ZIM and stream funnels.
+
+    Deferred graph/index imports: those modules import log/constants from
+    this one, so a top-level import would be circular.
+    """
+    from .graph import resolve_and_rank
+    from .index import build_deep, build_quick
+
+    state = state or {}
+    n_docs = con.execute("SELECT COUNT(*) FROM doc").fetchone()[0]
+    if n_docs == 0:
+        return 0
+
+    log("building core indexes")
+    init_core_indexes(con)
+
+    # --- pass 2: graph
+    if state.get("graph_done") == "1" and not force_graph:
+        log("pass 2: already complete, skipping")
+    elif paths.edges.exists() and paths.edges.stat().st_size > 0:
+        max_id = con.execute("SELECT MAX(id) FROM doc").fetchone()[0]
+        con.execute("PRAGMA cache_size=-262144")   # 256 MiB; see codexctl
+        try:
+            stats = resolve_and_rank(con, paths.edges, max_id)
+        finally:
+            apply_pragmas(con, BUILD_PRAGMAS)
+        set_meta(con, graph_done="1", **{f"graph_{k}": v
+                                         for k, v in stats.items()})
+    else:
+        log("pass 2: no edges, skipping graph (BM25-only film)")
+
+    # --- pass 3: indexes
+    init_fts_quick(con)
+    build_quick(con)
+
+    if not no_deep:
+        deep = sqlite3.connect(str(paths.deep), isolation_level=None)
+        apply_pragmas(deep, BUILD_PRAGMAS)
+        init_deep(deep)
+        build_deep(con, deep)
+        set_meta(deep, table="deep_meta", schema_version=SCHEMA_VERSION,
+                 core=paths.core.name, docs=n_docs)
+        deep.execute("PRAGMA journal_mode=WAL")
+        deep.close()
+
+    set_meta(con, docs=n_docs, built_at=time.strftime("%Y-%m-%dT%H:%M:%S"))
+    log("vacuuming core")
+    con.execute("PRAGMA journal_mode=WAL")
+    # VACUUM rebuilds the database into a temporary copy, and that copy
+    # honours temp_store. BUILD_PRAGMAS sets temp_store=MEMORY, which on a
+    # multi-GB core means trying to hold the entire rebuilt database in RAM.
+    # Put it on the scratch volume instead.
+    os.environ.setdefault("SQLITE_TMPDIR", str(paths.workdir))
+    con.execute("PRAGMA temp_store=FILE")
+    con.execute("VACUUM")
+    con.close()
+    return n_docs

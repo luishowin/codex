@@ -80,11 +80,13 @@ def _load_one(path: str) -> str | None:
     META[name] = {
         "name": name, "docs": n, "deep": s.has_deep,
         "title": row.get("title", name),
-        "source": row.get("source_zim", ""),
+        "source": row.get("source_zim", "") or row.get("source_dir", ""),
         "date": row.get("zim_date", ""),
         "built": row.get("built_at", ""),
         "words": words or 0,
-        "zstd_level": row.get("zstd_level", ""),
+        "body_codec": row.get("body_codec", ""),
+        "compress_level": (row.get("compress_level", "")
+                           or row.get("zstd_level", "")),
         "schema": row.get("schema_version", ""),
         "adapter": row.get("adapter", ""),
         "language": row.get("language", ""),

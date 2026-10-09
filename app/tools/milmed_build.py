@@ -31,17 +31,17 @@ import re
 import struct
 import sys
 import time
+import zlib
 from collections import Counter
 from pathlib import Path
 
 import fitz
-import zstandard as zstd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from codex import graph as G
 from codex import index as I
-from codex.build import DICT_SIZE, EDGE_STRUCT, ZSTD_LEVEL, log, path_hash
+from codex.build import EDGE_STRUCT, ZLIB_LEVEL, log, path_hash
 from codex.hygiene import strip_figure_directives
 from codex.model import KIND_ARTICLE, KIND_DEVICE, Doc, Section, norm
 from codex.paths import MILMED_DIR, data_dir
@@ -267,7 +267,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(prog="milmed_build")
     ap.add_argument("--out", default=str(data_dir()))
     ap.add_argument("--name", default="military-medicine")
-    ap.add_argument("--zstd-level", type=int, default=ZSTD_LEVEL)
+    ap.add_argument("--compress-level", type=int, default=ZLIB_LEVEL)
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -288,25 +288,20 @@ def main() -> int:
         log(f"  {stem:16s} {len(sections):4d} sections  "
             f"{sum(len(d.text.split()) for d in sections):8,d} words")
 
-    # Pass 0: one dictionary over a sample of the bodies.
+    # Bodies as JSON bytes; compressed per row below (zlib, no dictionary).
     bodies = [json.dumps([s.as_json() for s in d.sections],
                          ensure_ascii=False, separators=(",", ":")).encode()
               for d in all_docs]
-    log(f"pass 0: training dictionary on {len(bodies):,} bodies")
-    zdict = zstd.train_dictionary(DICT_SIZE, bodies, level=args.zstd_level)
-    cctx = zstd.ZstdCompressor(level=args.zstd_level, dict_data=zdict)
 
     con = sqlite3.connect(str(core_path), isolation_level=None)
     apply_pragmas(con, BUILD_PRAGMAS)
     init_core(con)
-    con.execute("INSERT OR REPLACE INTO zdict(id, dict) VALUES(1, ?)",
-                (zdict.as_bytes(),))
 
     log(f"pass 1: writing {len(all_docs):,} documents")
     rows, edge_buf = [], bytearray()
     for doc_id, (doc, body_json) in enumerate(zip(all_docs, bodies), 1):
         rows.append((doc_id, doc.path, doc.title, doc.kind, doc.word_count,
-                     doc.lead, cctx.compress(body_json),
+                     doc.lead, zlib.compress(body_json, args.compress_level),
                      json.dumps(doc.meta, ensure_ascii=False,
                                 separators=(",", ":")), doc.flags))
         for link in doc.links:
@@ -322,7 +317,8 @@ def main() -> int:
              source_zim="irp.fas.org_en_military-medicine_2026-05.zim",
              source_bytes=sum((SRC / f"{s}.pdf").stat().st_size for s in stems),
              adapter="milmed", title="Military Medicine", language="eng",
-             zim_date="2026-05", zstd_level=args.zstd_level,
+             zim_date="2026-05", body_codec="zlib",
+             compress_level=args.compress_level,
              built_by="milmed_build", docs=len(all_docs))
 
     log("building core indexes")
@@ -338,7 +334,7 @@ def main() -> int:
     deep = sqlite3.connect(str(deep_path), isolation_level=None)
     apply_pragmas(deep, BUILD_PRAGMAS)
     init_deep(deep)
-    I.build_deep(con, deep, zdict.as_bytes())
+    I.build_deep(con, deep)
     set_meta(deep, table="deep_meta", schema_version=SCHEMA_VERSION,
              core=core_path.name, docs=len(all_docs))
     deep.execute("PRAGMA journal_mode=WAL")

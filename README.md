@@ -319,7 +319,7 @@ The environment is machine-local, never portable: recreate it on each machine.
 
 ```bash
 python3 -m venv .venv                          # Linux / macOS
-.venv/bin/pip install libzim selectolax zstandard numpy Pillow pytest
+.venv/bin/pip install -r requirements-build.txt
 
 python -m venv .venv                           # Windows
 .venv\Scripts\pip install libzim selectolax zstandard numpy Pillow pywebview pytest
@@ -328,6 +328,31 @@ python -m venv .venv                           # Windows
 `pywebview` is only needed by the Windows-only `launcher.py`. `codex/paths.py`
 resolves every location from the project root; the overrides that exist are
 `CODEX_DATA_DIR`, `CODEX_ART_DB`, `CODEX_WORK_DIR` and `CODEX_MILMED_DIR`.
+
+## Fresh machine (the USB test)
+
+Running the projector needs stock Python 3 + SQLite and nothing else — no
+venv, no pip. The `.venv` above is only for cutting film (build), running
+tools, and the test suite.
+
+```bash
+# Fedora / any Linux with python3 (3.10+) and sqlite3
+git clone <repo> corpus && cd corpus
+cp /media/usb/*.codex.db /media/usb/art.db data/   # the film travels separately
+bash scripts/linux/start.sh                          # uses system python3, just works
+```
+
+Windows needs one thing Linux ships by default: Python itself
+(`winget install Python.Python.3` or python.org), then the same clone +
+`scripts\windows\start.ps1`. To *build* film anywhere, create the venv above
+— `requirements-build.txt` is the whole build-time dependency list, fenced
+out of the projector by `app/tests/test_stdlib_runtime.py`.
+
+What travels and what doesn't: the repo (projector, canvas, tools, docs)
+fits anywhere; `data/` (film, ~32 GB, git-ignored) moves by USB copy;
+`.venv/` and `_work/` are recreated, never copied. A roll is one
+`.codex.db` (+ optional `-deep.db`); WAL/SHM siblings move with it when the
+daemon is stopped, and never while it runs.
 
 ## Build
 
