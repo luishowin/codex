@@ -150,13 +150,12 @@ commands in `START-GUIDE.html`; agent rules in `AGENTS.md`.
    layering); `calibrate.py` still projects in zstd ratios.
  - Recipe: README "Fresh machine" (system python3 serves, venv only for
    building), guide/AGENTS reframed the same way.
- - Migration state: 12/13 rolls transcoded, verified, serving. wikipedia
-   (7.08M bodies) fully transcoded — 0 zstd-magic rows in a full scan —
-   but its 21 GB WAL is still checkpointing and the roll is unloaded
-   pending reload. Backups in `_work/transcode-bak/` (21 GB) stay until the
-   reload verifies. Still pending: reload, full-suite re-run, stock-python3
-   boot proof, backup deletion.
- - Suite 149 passed (fence + funnel included) with 12 rolls loaded.
+ - Migration state: COMPLETE. All 13 rolls zlib (`body_codec=zlib`, 0
+   zstd-magic rows in a full wikipedia scan). wikipedia: 20.5 → 22.6 GB core
+   after transcode + VACUUM (+10%); shelf cores 22.3 → 23.0 GB. Daemon
+   served all 13 rolls from the stock interpreter (no zstandard installed:
+   import fails, daemon up, search/doc/browse verified). Daemon currently
+   STOPPED (killed 2026-10-09); transcode backups deleted. Suite 149 green.
 
 ## Next
 
