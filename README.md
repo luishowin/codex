@@ -41,9 +41,9 @@ and `app/tools/` cut new film, `scripts/` start and stop the projector.
 │   ├── codexctl.py        build / info / search CLI
 │   ├── launcher.py        Windows hotkey overlay (Windows-only)
 │   ├── codex/             package: paths, adapters, build, graph, index, search, ...
-│   ├── tools/             calibrate, gaps, stats, art_*, milmed_*, attic/
+│   ├── tools/             calibrate, gaps, stats, art_*, milmed_*, mock_library, attic/
 │   ├── tests/             pytest suite
-│   └── web/               single-file web UI + assets
+│   └── web/               canvas: index.html, codex.css, app.js, views/, fonts/, mock/
 ├── data/                  built corpora: *.codex.db, *.codex-deep.db, art.db
 ├── scripts/               linux/ macos/ windows/ each with start, stop, status
 └── _work/                 generated artifacts: art_cache, logs, manifests, pidfile
@@ -380,12 +380,35 @@ python app/launcher.py                            # Windows-only global hotkey o
 
 Keys: `↑`/`↓` move · `Enter` open · `Tab` quick/deep · `Esc` back.
 
-The browser view opens on a centred home state and collapses to a top bar once
-you type, with a metrics line ("About 1,000+ results in 187 ms · quick · ifixit
-1, wikipedia 1,000") and a **stats** panel showing each loaded codex: documents,
-words, core and deep size, size against the source ZIM, adapter, zstd level and
-build date. The hotkey overlay loads the same page via `/?launcher` and stays a
-single compact bar — a centred hero is wrong for a Spotlight-style window.
+The canvas is one window: a top bar with a menubar, back/forward and a single
+search field; a home page; an article reader with a serif display face; the
+library of cassettes; settings; and a side sheet holding contents, saved
+articles and this session's history. Search has two doors — a popover that
+answers while you type (seven hits and "all results"), and a full results page
+with the projector's timing, total and per-codex attribution.
+
+Views are separate ES modules under `app/web/views/` and are wired by
+`app/web/app.js`; there is no build step and no bundler. Routes live in the
+hash (`#/library`, `#/c/<name>`, `#/a/<codex>/<id>`, `#/search/<q>`,
+`#/browse/<codex>/<letter>`, `#/settings`), so the same files work as a plain
+page, inside the future Tauri window, and from a `/read?codex=&id=` permalink.
+
+The shelf is a specimen of the cassette format, not a cassette service:
+`app/tools/mock_library.py` reads each `*.codex.db` read-only (plus `art.db`),
+writes `app/web/mock/library.json`, and the canvas falls back to it only when
+`/api/library` is absent. Digests are real SHA-256 below 2 GB and `null` above
+it — a fixture never invents a hash. Regenerate with:
+
+```bash
+python app/tools/mock_library.py          # write the fixture
+python app/tools/mock_library.py --check  # exit 1 if stale
+```
+
+Hotkeys: `/` or `Ctrl+K` search · `Ctrl+F` find in article · `Alt+←`/`→`
+back/forward · `Ctrl+D` save article · `Ctrl+\` contents · `Ctrl+L` library ·
+`Ctrl+=`/`-`/`0` text size. The Windows overlay loads the same page via
+`/?launcher` and stays a compact bar without the hero, because a centred hero
+is wrong for a Spotlight-style window.
 
 The client will not issue a query below two characters, and debounces at 120 ms.
 Superseded keystrokes are cancelled with `AbortController` rather than merely
@@ -967,8 +990,11 @@ python -m pytest app/tests/ -q
 
 Works from any directory: the suite locates `data/` through the same
 `codex/paths.py` module the application uses, and the daemon boot test runs a
-real daemon on a scratch port. 126 passing on Windows as of V0.6; 138 passing
-on Linux after the portable-layout migration (2026-09-25).
+real daemon on a scratch port. 126 passing on Windows as of V0.6; 138 on Linux
+after the portable-layout migration (2026-09-25); 161 on Linux after the canvas
+rework (2026-11-15), twelve of them `test_web_assets.py`: no external URLs in
+the canvas, every import and `/static/` reference resolves, and the cassette
+fixture matches SPEC section 3 without inventing a digest.
 
 Pinned expected hits for 10 queries, ordering and dedup, zstd round-trip against
 the stored dictionary, referential integrity of redirects and related rows,

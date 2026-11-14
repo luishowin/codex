@@ -81,3 +81,51 @@ tier, relaxed, codex, art?}`. `total` counts up to a 1,000 cap, then
 Promises: v1 responses only gain keys; `codex` names are the filenames;
 unloading never touches other rolls; missing `art.db`/deep files degrade to
 fewer pictures/depth, never errors.
+
+## 3. Cassettes (manifest v1) — specified, not implemented
+
+A cassette is a **self-describing directory**, not one archive file: the
+largest core is over 24 GB, and FAT32 refuses files above 4 GB. The volume
+root is the cassette:
+
+```
+CODEX-CASSETTE/
+  cassette.json            manifest (below)
+  cover.svg                generated cover, no raster dependency
+  film/<name>.codex.db     core, clean (VACUUM INTO, never a live WAL copy)
+  film/<name>.codex-deep.db   optional
+  film/art.db              optional subset: only rows bound to this codex
+  SHA256SUMS               sha256sum -c compatible, one line per file
+  ATTRIBUTION.txt          corpus licence and source, for sharing
+```
+
+`cassette.json`:
+
+| key | type | meaning |
+|---|---|---|
+| `schema` | int | `1` |
+| `cassette_id` | string | stable identity of the physical cassette (ULID) |
+| `name` | string | film name; equals the `*.codex.db` stem |
+| `title` | string | display title (from `codex_meta.title`) |
+| `issue` | string | `YYYY.MM`, the label on the spine |
+| `created_at` | string | ISO-8601, when the cassette was sealed |
+| `created_by` | string | a person, not `built_by: codexctl` |
+| `contents` | object | `documents, words, language, adapter, source, source_date, schema` |
+| `film` | array | `[{role: core\|deep, file, bytes, sha256}]` |
+| `cover` | object | `{hero_slug, subject, palette}`; `palette` is one of ink, ember, moss, slate, wine, sand |
+| `licence` | object | `{name, url, note}` |
+| `manifest_sha256` | string\|null | digest of this manifest with the field itself blanked |
+
+Rules:
+
+- `sha256` is either a lowercase hex digest of the file or `null`. **Never
+  fabricated.** A digest over 2 GB is computed once at pack time and cached.
+- Writers checkpoint first: `VACUUM INTO` produces the shipped core. No
+  `-wal` or `-shm` sibling is ever written to a cassette.
+- `role: deep` is optional; a cassette without it reads, with less depth.
+- Readers ignore unknown keys, so this section can gain fields.
+- Verification, import and return are the library service's job; the
+  manifest is the contract they share. Until `/api/library` exists, the
+  canvas reads `app/web/mock/library.json`, generated from real film by
+  `app/tools/mock_library.py`, and labels the shelf as a fixture.
+

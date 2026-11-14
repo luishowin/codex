@@ -1,0 +1,580 @@
+{
+ "schema": 1,
+ "generated_at": "",
+ "generated_by": "app/tools/mock_library.py",
+ "note": "Fixture for the UI. Not a cassette. No manifest digest is claimed.",
+ "cassettes": [
+  {
+   "schema": 1,
+   "cassette_id": "mock-f6c70c9350ca",
+   "name": "wikipedia",
+   "title": "Wikipedia",
+   "issue": "2026.06",
+   "created_at": "2026-07-27T18:44:31",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 7077143,
+    "words": 4160713925,
+    "language": "eng",
+    "adapter": "wikipedia",
+    "source": "wikipedia_en_all_nopic_2026-06.zim",
+    "source_date": "2026-06-17",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/wikipedia.codex.db",
+     "bytes": 24228651008,
+     "sha256": null
+    },
+    {
+     "role": "deep",
+     "file": "film/wikipedia.codex-deep.db",
+     "bytes": 11082452992,
+     "sha256": null
+    }
+   ],
+   "cover": {
+    "hero_slug": "heart",
+    "subject": "Heart",
+    "palette": "slate"
+   },
+   "licence": {
+    "name": "CC BY-SA 4.0",
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-b04ed0ac2668",
+   "name": "ifixit",
+   "title": "iFixit in English",
+   "issue": "2025.12",
+   "created_at": "2026-07-27T03:06:24",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 82269,
+    "words": 32511233,
+    "language": "eng",
+    "adapter": "ifixit",
+    "source": "ifixit_en_all_2025-12.zim",
+    "source_date": "2025-12-21",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/ifixit.codex.db",
+     "bytes": 166658048,
+     "sha256": "33657728b4a08172bf226a38e9731c7d5c31cae4a5382974332d37014a56e61a"
+    },
+    {
+     "role": "deep",
+     "file": "film/ifixit.codex-deep.db",
+     "bytes": 81133568,
+     "sha256": "210bda28afec6141b0a72567c3aab95c84a09fa45f0cd147713f1819168cb498"
+    }
+   ],
+   "cover": {
+    "hero_slug": "stretcher",
+    "subject": "Stretcher",
+    "palette": "wine"
+   },
+   "licence": {
+    "name": "CC BY-NC-SA 3.0",
+    "url": "https://creativecommons.org/licenses/by-nc-sa/3.0/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-fdb98cdb4844",
+   "name": "wikipedia-medicine",
+   "title": "WikiMed Medical Encyclopedia",
+   "issue": "2026.04",
+   "created_at": "2026-07-27T21:49:50",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 68871,
+    "words": 57905545,
+    "language": "eng",
+    "adapter": "wikipedia",
+    "source": "wikipedia_en_medicine_maxi_2026-04.zim",
+    "source_date": "2026-04-11",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/wikipedia-medicine.codex.db",
+     "bytes": 302387200,
+     "sha256": "1328e99e2b20cabcb4776396d2770592bb1d8339d737d013a703f59aa1298688"
+    },
+    {
+     "role": "deep",
+     "file": "film/wikipedia-medicine.codex-deep.db",
+     "bytes": 147845120,
+     "sha256": "967f68da76b4fe80169f0978449e445a96a8c414331f94f874a52b4a7a2ddf33"
+    }
+   ],
+   "cover": {
+    "hero_slug": "heart",
+    "subject": "Heart",
+    "palette": "sand"
+   },
+   "licence": {
+    "name": "CC BY-SA 4.0",
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-016573e9bda8",
+   "name": "wikiversity",
+   "title": "Wikiversity",
+   "issue": "2026.05",
+   "created_at": "2026-07-27T22:01:48",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 49886,
+    "words": 46996802,
+    "language": "eng",
+    "adapter": "wikipedia",
+    "source": "wikiversity_en_all_maxi_2026-05.zim",
+    "source_date": "2026-05-06",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/wikiversity.codex.db",
+     "bytes": 189403136,
+     "sha256": "4694981e0a7c28c444fa193792d87c53d5e783f3db07d7fec0b2f94752512552"
+    },
+    {
+     "role": "deep",
+     "file": "film/wikiversity.codex-deep.db",
+     "bytes": 112898048,
+     "sha256": "b2ae9a189dd29d1a1a2bbf7bc1797cfdfb393dc5fa3a913e2bd25e8e264c00f1"
+    }
+   ],
+   "cover": {
+    "hero_slug": "heart",
+    "subject": "Heart",
+    "palette": "sand"
+   },
+   "licence": {
+    "name": "CC BY-SA 4.0",
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-9da839537009",
+   "name": "libretexts-med",
+   "title": "Medicine LibreTexts",
+   "issue": "2025.01",
+   "created_at": "2026-07-28T00:30:51",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 20926,
+    "words": 23336249,
+    "language": "eng",
+    "adapter": "libretexts",
+    "source": "libretexts.org_en_med_2025-01.zim",
+    "source_date": "2025-01-16",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/libretexts-med.codex.db",
+     "bytes": 112107520,
+     "sha256": "c232b2b62f8868fbbbb81ff05ff5a1add4a3c270000c68015187c15f7fded55b"
+    },
+    {
+     "role": "deep",
+     "file": "film/libretexts-med.codex-deep.db",
+     "bytes": 59314176,
+     "sha256": "b39c755543e02095bc31e9f950a9de519825c72cd44d1d507647c86bfcb8eca8"
+    }
+   ],
+   "cover": {
+    "hero_slug": null,
+    "subject": "",
+    "palette": "moss"
+   },
+   "licence": {
+    "name": "Varies by book (CC BY-NC-SA typical)",
+    "url": "https://libretexts.org/platform-home/licensing-information",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-6d3d60ede838",
+   "name": "medlineplus",
+   "title": "MedlinePlus",
+   "issue": "2025.01",
+   "created_at": "2026-07-27T22:55:52",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 14932,
+    "words": 11227348,
+    "language": "eng",
+    "adapter": "generic",
+    "source": "medlineplus.gov_en_all_2025-01.zim",
+    "source_date": "2025-01-04",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/medlineplus.codex.db",
+     "bytes": 54689792,
+     "sha256": "9eddda90065fcdeba61334bfd3928c417e3aef1cb8bcd1656f58acfb043e97ec"
+    },
+    {
+     "role": "deep",
+     "file": "film/medlineplus.codex-deep.db",
+     "bytes": 34631680,
+     "sha256": "3c6b0f54396f4b445928d82ac226420514fb7d9e53eeefc6876119d322fc3fa7"
+    }
+   ],
+   "cover": {
+    "hero_slug": "human-skeleton",
+    "subject": "Human skeleton",
+    "palette": "wine"
+   },
+   "licence": {
+    "name": "Public domain (US Government)",
+    "url": "https://medlineplus.gov/about/using/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-63d628c85a18",
+   "name": "wikivoyage-europe",
+   "title": "Wikivoyage - Europe",
+   "issue": "2026.03",
+   "created_at": "2026-07-27T21:56:15",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 9118,
+    "words": 12398771,
+    "language": "eng",
+    "adapter": "wikipedia",
+    "source": "wikivoyage_en_europe_maxi_2026-03.zim",
+    "source_date": "2026-03-18",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/wikivoyage-europe.codex.db",
+     "bytes": 51335168,
+     "sha256": "1239cae2abae753a5302201c54217cd73934b57655dd624fc199879eb2d688b5"
+    },
+    {
+     "role": "deep",
+     "file": "film/wikivoyage-europe.codex-deep.db",
+     "bytes": 40947712,
+     "sha256": "669aa1a61d1cc547a91628bc45e19d0e4696db7303d2291c3c41aeedbe2ecd40"
+    }
+   ],
+   "cover": {
+    "hero_slug": "heart",
+    "subject": "Heart",
+    "palette": "ink"
+   },
+   "licence": {
+    "name": "CC BY-SA 4.0",
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-90de95c4ec70",
+   "name": "wikipedia-climate",
+   "title": "Climate change by Wikipedia",
+   "issue": "2026.04",
+   "created_at": "2026-07-27T21:54:16",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 3733,
+    "words": 6620529,
+    "language": "eng",
+    "adapter": "wikipedia",
+    "source": "wikipedia_en_climate-change_nopic_2026-04.zim",
+    "source_date": "2026-04-06",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/wikipedia-climate.codex.db",
+     "bytes": 28127232,
+     "sha256": "51e8477519a16f711bdec1aeca8deb3cd1feddc635ab4e43b927f8c4d4d74289"
+    },
+    {
+     "role": "deep",
+     "file": "film/wikipedia-climate.codex-deep.db",
+     "bytes": 21159936,
+     "sha256": "42867639f271a0c4d2f3a286c21439e0259b98c521f92ecf3ff0e35d66f44a8e"
+    }
+   ],
+   "cover": {
+    "hero_slug": "heart",
+    "subject": "Heart",
+    "palette": "wine"
+   },
+   "licence": {
+    "name": "CC BY-SA 4.0",
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-1fcc3f62711c",
+   "name": "ready-gov",
+   "title": "Ready.gov",
+   "issue": "2024.12",
+   "created_at": "2026-07-27T22:54:43",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 2006,
+    "words": 1113860,
+    "language": "eng",
+    "adapter": "generic",
+    "source": "www.ready.gov_en_2024-12.zim",
+    "source_date": "2024-12-03",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/ready-gov.codex.db",
+     "bytes": 7610368,
+     "sha256": "63e9b033a7dc86f7d61c24a4f1dc3d4ed6ffae6db59f47e04a97c237b288ef89"
+    },
+    {
+     "role": "deep",
+     "file": "film/ready-gov.codex-deep.db",
+     "bytes": 7319552,
+     "sha256": "26d7e3d6983afcca6d1b04e4c373eda6e9879617297cc5c183c702c7fc095f0c"
+    }
+   ],
+   "cover": {
+    "hero_slug": "flood",
+    "subject": "Flood",
+    "palette": "slate"
+   },
+   "licence": {
+    "name": "Public domain (US Government)",
+    "url": "https://www.ready.gov/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-10021ddc9af5",
+   "name": "nhs-medicines",
+   "title": "NHS' Medicines A to Z",
+   "issue": "2025.12",
+   "created_at": "2026-07-27T22:54:07",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 1996,
+    "words": 955618,
+    "language": "eng",
+    "adapter": "generic",
+    "source": "nhs.uk_en_medicines_2025-12.zim",
+    "source_date": "2025-12-14",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/nhs-medicines.codex.db",
+     "bytes": 5787648,
+     "sha256": "bd4ad53e5cde00f2b6affad350b700b50d8c5a42e100b564dd8663889f030186"
+    },
+    {
+     "role": "deep",
+     "file": "film/nhs-medicines.codex-deep.db",
+     "bytes": 4591616,
+     "sha256": "a13192a4451476392e2d7ba5cca7a55bb56d4da401cdf698db88b96067abc17c"
+    }
+   ],
+   "cover": {
+    "hero_slug": "morphine",
+    "subject": "Morphine",
+    "palette": "ember"
+   },
+   "licence": {
+    "name": "Open Government Licence v3.0",
+    "url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-53b60df6499e",
+   "name": "mdn",
+   "title": "MDN Web Docs",
+   "issue": "2026.07",
+   "created_at": "2026-07-27T22:54:26",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 1231,
+    "words": 694406,
+    "language": "eng",
+    "adapter": "generic",
+    "source": "developer.mozilla.org_bc74bccb.zim",
+    "source_date": "2026-07-27",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/mdn.codex.db",
+     "bytes": 5124096,
+     "sha256": "555989917ea8ae81925145aeea5abe686951be454cc747d84bf9137bbf1782cb"
+    },
+    {
+     "role": "deep",
+     "file": "film/mdn.codex-deep.db",
+     "bytes": 4120576,
+     "sha256": "04bc4ea7d53775bd07663e6e7c14364facfe950c0d1b7a0694721f77faa9e785"
+    }
+   ],
+   "cover": {
+    "hero_slug": null,
+    "subject": "",
+    "palette": "moss"
+   },
+   "licence": {
+    "name": "CC BY-SA 2.5",
+    "url": "https://creativecommons.org/licenses/by-sa/2.5/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-41a2c313ed26",
+   "name": "military-medicine",
+   "title": "Military Medicine",
+   "issue": "2026.05",
+   "created_at": "2026-07-28T05:33:35",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 1147,
+    "words": 1650994,
+    "language": "eng",
+    "adapter": "milmed",
+    "source": "irp.fas.org_en_military-medicine_2026-05.zim",
+    "source_date": "2026-05",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/military-medicine.codex.db",
+     "bytes": 7065600,
+     "sha256": "1bf3694b254f93abe5d1b839b5202ceeda23f0fac1f4d2c01a2deb524c6e1185"
+    },
+    {
+     "role": "deep",
+     "file": "film/military-medicine.codex-deep.db",
+     "bytes": 8380416,
+     "sha256": "866ad63d65814834e6df73c291a78843aeaa11335752475b905d0d263a248251"
+    }
+   ],
+   "cover": {
+    "hero_slug": null,
+    "subject": "",
+    "palette": "slate"
+   },
+   "licence": {
+    "name": "Check per document",
+    "url": "https://irp.fas.org/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  },
+  {
+   "schema": 1,
+   "cassette_id": "mock-35401af68de5",
+   "name": "wikipedia-100",
+   "title": "Wikipedia 100",
+   "issue": "2026.04",
+   "created_at": "2026-07-27T21:56:33",
+   "created_by": "Luis Maina",
+   "contents": {
+    "documents": 102,
+    "words": 968286,
+    "language": "eng",
+    "adapter": "wikipedia",
+    "source": "wikipedia_en_100_maxi_2026-04.zim",
+    "source_date": "2026-04-15",
+    "schema": 1
+   },
+   "film": [
+    {
+     "role": "core",
+     "file": "film/wikipedia-100.codex.db",
+     "bytes": 3059712,
+     "sha256": "93eea818fa142d4159ae65c1d34efbd5b11f01538785a09711c43d020f2e023b"
+    },
+    {
+     "role": "deep",
+     "file": "film/wikipedia-100.codex-deep.db",
+     "bytes": 4399104,
+     "sha256": "75fbf890d8c36af5bc7e793b46a670b4a2212c331ad9b1187894d47a99c16b88"
+    }
+   ],
+   "cover": {
+    "hero_slug": "heart",
+    "subject": "Heart",
+    "palette": "moss"
+   },
+   "licence": {
+    "name": "CC BY-SA 4.0",
+    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "note": "Verify before redistribution"
+   },
+   "manifest_sha256": null,
+   "_mock": true
+  }
+ ]
+}

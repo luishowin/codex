@@ -66,7 +66,7 @@ python app/tools/gaps.py data/<name>.codex.db
 ## Tests
 
 ```bash
-cd <root> && .venv/bin/python -m pytest app/tests/ -q   # 138 passing (Linux, 2026-09-25)
+cd <root> && .venv/bin/python -m pytest app/tests/ -q   # 161 passing (Linux, 2026-11-15)
 ```
 
 - Run after touching `codex/search.py` or the ranking blend. `tests/test_search_quality.py` pins 10 queries + asserts `codex-media.db` stays gone; `CODEX_DB` env overrides the default (`data/ifixit.codex.db`), suite skips gracefully if absent. `tests/test_paths.py` pins the portable layout and boots a real daemon on port 8877 (works from any CWD).
