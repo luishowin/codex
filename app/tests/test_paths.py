@@ -77,7 +77,7 @@ class TestDatabaseAccess:
             n = con.execute("SELECT COUNT(*) FROM doc").fetchone()[0]
         finally:
             con.close()
-        assert n == 82269  # the V0.x ifixit build, unchanged by migration
+        assert n == 82231  # ifixit, rebuilt 2026-11-20 (was 82,269)
 
 
 class TestNoMachinePaths:
@@ -161,7 +161,7 @@ class TestDaemonBoot:
             assert health is not None, "daemon never answered /api/health"
             assert health["ok"] is True
             assert [c["name"] for c in health["codexes"]] == ["ifixit"]
-            assert health["codexes"][0]["docs"] == 82269
+            assert health["codexes"][0]["docs"] == 82231  # rebuilt 2026-11-20
             # art.db found via its project-relative default.
             assert health["art"] is not None
             assert health["art"]["images"] == 100

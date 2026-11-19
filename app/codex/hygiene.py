@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import re
 
+from .artifacts import strip_language_switcher
+
 # An image noun must be present for any rule to fire. Matching bare verbs like
 # "highlighted in" alone produces false positives -- "Additions are highlighted
 # in a darker shade of green" is about iFixit's own UI, not a photo.
@@ -109,6 +111,9 @@ def clean_text(text: str) -> tuple[str, bool]:
     """
     if not text:
         return text, False
+    # A language picker is page furniture, not the first sentence. Done before
+    # the image cheap-reject below, which would otherwise skip this text.
+    text = strip_language_switcher(text)
     # Cheap reject: most text has no image vocabulary at all.
     if not _DEPENDENT.search(text):
         return text, False

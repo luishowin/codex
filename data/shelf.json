@@ -1,0 +1,10 @@
+{
+ "schema": 1,
+ "note": "Rolls that stay on disk but off the shelf. A skipped roll is not loaded, not searched and not listed by /api/library (ask for ?all=1 to see it). Nothing is deleted: remove a name from `hidden` to put it back. `weights` optionally multiplies the merge's derived per-source weight (e.g. {\"mdn\": 1.5}); empty means no human override.",
+ "hidden": [
+  "wikipedia-100",
+  "wikipedia-climate",
+  "wikipedia-medicine"
+ ],
+ "weights": {}
+}

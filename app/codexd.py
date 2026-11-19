@@ -20,21 +20,44 @@ import socketserver
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from codex import cassette, merge
 from codex.art import ArtStore
-from codex.paths import art_db_path, codex_globs
+from codex.paths import (art_db_path, codex_globs, data_dir, hidden_rolls,
+                         shelf_path, source_weights)
 from codex.search import Searcher
 
 HERE = Path(__file__).resolve().parent
 WEB = HERE / "web"
 
+# Presentation only: what a codex's top-level containers should be called.
+# A book for the manual and curriculum sources, a device for iFixit, a neutral
+# word for anything that later turns out to have containers.
+UNITS = {"milmed": "book", "libretexts": "book", "ifixit": "device"}
+
 CODEXES: dict[str, Searcher] = {}
 META: dict[str, dict] = {}
+# codex_meta as stored, kept so a shelf manifest never has to re-read the file
+# to learn what the daemon already read at load time.
+RAW: dict[str, dict] = {}
+
+# Rolls present on disk but deliberately not on the shelf (data/shelf.json).
+# Reported by /api/health so "missing" and "hidden" are never confused.
+HIDDEN: set[str] = set()
+
+# /api/library assembled once, because summing word_count over 7M rows is not
+# a per-request cost. Invalidated whenever a roll is loaded or unloaded.
+LIBRARY: dict[bool, dict] = {}
+
+# Human overrides for the cross-codex merge (data/shelf.json -> weights).
+# Empty by default; the merge derives its own weights from specialisation.
+WEIGHTS: dict[str, float] = {}
 
 # The curated image layer, or None when art.db is absent. Every use is guarded;
 # a missing file costs nothing but the pictures.
@@ -77,6 +100,7 @@ def _load_one(path: str) -> str | None:
     row = dict(s.con.execute("SELECT key, value FROM codex_meta").fetchall())
     n = s.con.execute("SELECT COUNT(*) FROM doc").fetchone()[0]
     words = s.con.execute("SELECT SUM(word_count) FROM doc").fetchone()[0]
+    RAW[name] = row
     META[name] = {
         "name": name, "docs": n, "deep": s.has_deep,
         "title": row.get("title", name),
@@ -100,32 +124,86 @@ def _load_one(path: str) -> str | None:
     return name
 
 
-def load_codexes(paths: list[str]) -> None:
-    for pattern in paths:
+def discover(patterns: list[str], hidden: set[str] | None = None) -> list[str]:
+    """Expand patterns to codex paths, minus rolls hidden from the shelf.
+
+    An explicitly-passed ``--codex`` is never filtered: ``hidden`` is a
+    default-shelf policy, not a security control. That also keeps the tests
+    and one-off runs honest -- ask for ifixit, get ifixit.
+    """
+    hidden = hidden or set()
+    found = []
+    for pattern in patterns:
         for p in sorted(glob.glob(pattern)):
-            _load_one(p)
+            name = Path(p).name
+            if name.endswith(".codex.db") and name[:-len(".codex.db")] in hidden:
+                continue
+            found.append(p)
+    return found
+
+
+def load_codexes(paths: list[str], hidden: set[str] | None = None) -> None:
+    for p in discover(paths, hidden):
+        _load_one(p)
+
+
+def library(all_rolls: bool = False) -> dict:
+    """The shelf, cached.
+
+    The shelf is what the projector is actually serving, so the default is the
+    loaded set -- not every file on disk. ``?all=1`` adds the rest of the data
+    directory, which is how a client can offer to insert a roll that is present
+    but not playing.
+
+    Words per roll is the expensive part, so the daemon's own load counts are
+    handed over as a pre-filled cache; only rolls it never loaded are read, and
+    only the first time ``?all=1`` is asked for.
+    """
+    if all_rolls not in LIBRARY:
+        seed = {name: (RAW[name], META[name]["docs"], META[name]["words"])
+                for name in META}
+        LIBRARY[all_rolls] = cassette.build(
+            data_dir(),
+            Path(art_db_path()),
+            only=None if all_rolls else set(META),
+            max_hash=None,
+            generated_by="codexd",
+            generated_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            summaries=seed,
+        )
+    return LIBRARY[all_rolls]
 
 
 def _search_one(name: str, q: str, limit: int, deep: bool) -> dict:
+    s = CODEXES[name]
     try:
-        page = CODEXES[name].search_page(q, limit=limit, deep=deep)
+        page = s.search_page(q, limit=limit, deep=deep)
     except Exception as exc:
         print(f"  !! search {name}: {exc}", file=sys.stderr)
-        return {"hits": [], "total": 0, "capped": False}
+        return {"hits": [], "total": 0, "capped": False, "codex": name,
+                "docs": 0, "titles": 0}
+    page["codex"] = name
+    page["docs"] = META.get(name, {}).get("docs", 0)
+    # Specialisation probe for the merge. Only asked when there is something
+    # to rank: a codex with no hits contributes nothing to fuse.
+    page["titles"] = s.title_matches(q) if page["hits"] else 0
     for h in page["hits"]:
         h["codex"] = name
-    page["codex"] = name
     return page
 
 
 def search_all(q: str, limit: int, deep: bool, only: str | None) -> dict:
-    """Query every loaded codex and merge by score.
+    """Query every loaded codex, then fuse the pages (see codex/merge.py).
 
     Fanned out rather than looped. Each codex is an independent SQLite file and
     Searcher hands every thread its own connection, so there is nothing to
     serialise -- and a sequential loop would make each added source lengthen
     every query. One slow codex no longer delays the others, and no longer
     blocks unrelated clients the way the old global lock did.
+
+    The merge is where the sources are made comparable: raw scores are ranked
+    within one codex, so they are weighted by how specialised each codex is
+    for this query and de-duplicated by title before the page is cut.
     """
     targets = [only] if only and only in CODEXES else list(CODEXES)
     if len(targets) == 1:
@@ -133,21 +211,12 @@ def search_all(q: str, limit: int, deep: bool, only: str | None) -> dict:
     else:
         pages = list(POOL.map(lambda n: _search_one(n, q, limit, deep), targets))
 
-    hits = [h for p in pages for h in p["hits"]]
-    hits.sort(key=lambda h: -h["score"])
-    hits = hits[:limit]
+    page = merge.merge(pages, limit, WEIGHTS)
     # After the merge and the truncation, so this costs one dict lookup per hit
     # actually being returned rather than per candidate considered.
     if ART is not None:
-        ART.annotate(hits)
-    return {
-        "hits": hits,
-        # Sum of capped per-codex counts, so this is a floor once anything is
-        # capped -- which is exactly what "1,000+" claims.
-        "total": sum(p["total"] for p in pages),
-        "capped": any(p["capped"] for p in pages),
-        "per_codex": {p["codex"]: p["total"] for p in pages if p.get("codex")},
-    }
+        ART.annotate(page["hits"])
+    return page
 
 
 def _browse_one(name: str, prefix: str, limit: int, after: str) -> list:
@@ -215,7 +284,16 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/health":
             return self._json({"ok": True, "api": 1,
                                "codexes": list(META.values()),
+                               "hidden": sorted(HIDDEN),
+                               "shelf": str(shelf_path()),
                                "art": ART.stats() if ART else None})
+
+        # The shelf: one manifest per roll, in the shape of SPEC.md section 3.
+        # ``?all=1`` adds rolls that shelf policy keeps off the projector so a
+        # client can offer to insert them; the default is what is served.
+        if u.path == "/api/library":
+            all_rolls = one("all") in ("1", "true", "yes")
+            return self._json(library(all_rolls))
 
         # Image bytes. Content is immutable for a given slug -- a different
         # picture means a rebuilt art.db -- so unlike the API responses above
@@ -254,7 +332,8 @@ class Handler(BaseHTTPRequestHandler):
             q = one("q", "")
             if not q:
                 return self._json({"hits": [], "ms": 0.0, "total": 0,
-                                   "capped": False, "per_codex": {}, "q": ""})
+                                   "capped": False, "per_codex": {},
+                                   "weights": {}, "q": ""})
             limit = max(1, min(int(one("n", "12")), 100))
             deep = one("deep", "0") in ("1", "true", "yes")
             t0 = time.perf_counter()
@@ -271,6 +350,28 @@ class Handler(BaseHTTPRequestHandler):
             page = browse_all(prefix, limit, one("after", "") or "",
                               one("codex"))
             return self._json(page)
+
+        if u.path == "/api/index":
+            name = one("codex", "")
+            if name not in CODEXES:
+                return self._json({"error": "unknown codex"}, 404)
+            s = CODEXES[name]
+            root = one("root", "") or ""
+            if root:
+                if not root.isdigit():
+                    return self._json({"error": "root must be a document id"}, 400)
+                page = s.children(int(root))
+                if page is None:
+                    return self._json({"error": "not found"}, 404)
+                return self._json({"codex": name, **page})
+            try:
+                n = int(one("n", "500") or 500)
+            except ValueError:
+                n = 500
+            page = s.contents((one("prefix", "") or "")[:1].upper() or None,
+                              one("after", "") or "", max(1, min(n, 500)))
+            page["unit"] = UNITS.get(META.get(name, {}).get("adapter", ""), "entry")
+            return self._json({"codex": name, **page})
 
         if u.path == "/api/shelf":
             letter = (one("letter", "") or "")[:1].upper()
@@ -309,6 +410,7 @@ class Handler(BaseHTTPRequestHandler):
                 name = _load_one(p)
                 if name is not None:
                     loaded.append(name)
+            LIBRARY.clear()
             return self._json({"loaded": loaded,
                                "codexes": sorted(CODEXES)})
 
@@ -322,6 +424,8 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 pass
             META.pop(name, None)
+            RAW.pop(name, None)
+            LIBRARY.clear()
             return self._json({"unloaded": name,
                                "codexes": sorted(CODEXES)})
 
@@ -350,10 +454,20 @@ def main() -> int:
     args = p.parse_args()
 
     patterns = args.codex or codex_globs()
+    hidden = set() if args.codex else hidden_rolls()
     if args.art is None:
         args.art = str(art_db_path())
+    global HIDDEN
+    HIDDEN = hidden
+    global WEIGHTS
+    WEIGHTS = source_weights()
+    if WEIGHTS:
+        print(f"  merge weights: {', '.join(f'{k}={v:g}' for k, v in sorted(WEIGHTS.items()))}")
     print(f"codexd: loading from {patterns}")
-    load_codexes(patterns)
+    if hidden:
+        print(f"  shelf: {len(hidden)} roll(s) on disk but not loaded: "
+              f"{', '.join(sorted(hidden))}")
+    load_codexes(patterns, hidden)
     if not CODEXES:
         print("no codexes loaded", file=sys.stderr)
         return 1

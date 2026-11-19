@@ -492,9 +492,11 @@ class TestLibreTextsHierarchy:
         assert bad == 0, f"{bad} docs point at a duplicated context title"
 
     def test_repeated_titles_resolve_to_different_books(self, lt):
+        # "Index" repeats once per book and is still kept: it is real book
+        # matter (what was dropped is "Table of Contents"/"Front Matter").
         rows = list(lt.con.execute(
             "SELECT p.title FROM doc d JOIN doc p ON p.id = d.context_id "
-            "WHERE d.title = 'Front Matter'"))
+            "WHERE d.title = 'Index'"))
         assert len(rows) > 20
         assert len({r[0] for r in rows}) > 20, "all share one context label"
 

@@ -28,8 +28,16 @@ else
   exit 1
 fi
 
+# Shelf policy lives in <root>/data/shelf.json and is applied by codexd only
+# when it discovers the roll set itself, so the default pass no --codex.
+# CODEX_CODEXES overrides discovery with a space-separated list of paths/globs.
+CODEX_ARGS=()
+if [ -n "${CODEX_CODEXES:-}" ]; then
+  for pat in $CODEX_CODEXES; do CODEX_ARGS+=(--codex "$pat"); done
+fi
+
 nohup "$PY" -u "$ROOT/app/codexd.py" \
-  --codex "$ROOT/data/*.codex.db" \
+  ${CODEX_ARGS[@]+"${CODEX_ARGS[@]}"} \
   --art "$ROOT/data/art.db" \
   --port "$PORT" --host "$HOST" \
   >> "$LOGDIR/codexd.out.log" 2>> "$LOGDIR/codexd.err.log" &

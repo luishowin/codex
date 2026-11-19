@@ -108,6 +108,11 @@ class Searcher:
         self.core_path = Path(core_path)
         self.deadline = deadline
 
+        # Contents view state, computed once per process (see structure()).
+        self._struct: dict | None = None
+        self._counts: dict[int, int] = {}
+        self._child_cache: dict[int, list] = {}
+
         if deep_path is None:
             guess = self.core_path.with_name(
                 self.core_path.name.replace(".codex.db", ".codex-deep.db"))
@@ -247,6 +252,38 @@ class Searcher:
                     return hits, tier, op
         return [], None, None
 
+    def title_matches(self, query: str, cap: int = 500) -> int:
+        """How many of this codex's titles mention any query term.
+
+        The cross-codex merge (`codex/merge.py`) uses this as a specialisation
+        probe: a codex where the query is pervasive is more likely to be the
+        right source for it than one where it is a rounding error. Counting is
+        capped because past a few hundred the exact number stops meaning
+        anything -- and the cap is what keeps it cheap on a 7M-row corpus.
+
+        A title match is an FTS match, so the tokenizer's stemming applies:
+        "promise" also counts "promises" and "promising". That is deliberate
+        (it is the same vocabulary the search used) and is why the caller
+        requires a cluster of matches rather than trusting a single one.
+
+        Returns 0 on any failure: a missing specialisation signal must degrade
+        to "no opinion", never to a failed search.
+        """
+        terms = query_terms(query)
+        if not terms:
+            return 0
+        # Column filter must name the FTS column; the MATCH operand must stay
+        # the bare table name (see _DEEP_SQL for why).
+        expr = "{title} : (" + " OR ".join(f'"{t}"' for t in terms) + ")"
+        try:
+            with self._deadline(0.25):
+                return int(self.con.execute(
+                    "SELECT COUNT(*) FROM (SELECT rowid FROM fts_quick "
+                    "WHERE fts_quick MATCH ? LIMIT ?)",
+                    (expr, cap)).fetchone()[0])
+        except sqlite3.DatabaseError:
+            return 0
+
     def _count(self, query: str, tier: str, op: str,
                cap: int = COUNT_CAP) -> tuple[int, bool]:
         """How many documents matched, counted up to `cap`.
@@ -370,6 +407,158 @@ class Searcher:
         out.sort(key=lambda h: -h["score"])
         return out[:limit]
 
+    # -- structure / contents ---------------------------------------------
+    #
+    # A codex may be a shelf of books rather than a flat set of pages: a
+    # document can name its container in `context_id`, and containers are
+    # `kind=2`. Browsing that alphabetically is what puts every "APPENDIX 1..9"
+    # next to each other -- it is not a book, it is a pile. `structure()` reads
+    # the shape so the canvas can show a table of contents instead.
+    #
+    # Two facts drive the implementation:
+    #
+    # 1. The relation is not guaranteed acyclic. libretexts and iFixit both
+    #    link containers in a loop (Fundamentals of Nursing -> Nursing ->
+    #    Fundamentals); military-medicine is a clean two-level forest. So this
+    #    only ever walks *down*: roots are anchors with no parent, children are
+    #    direct children. Nothing walks up, so a loop can never be followed.
+    #
+    # 2. Probing is free for a codex that has anchors and ruinous for one that
+    #    does not. With no index on `kind`, `WHERE kind=2` returns instantly on
+    #    military-medicine (id 1), iFixit (1) and libretexts (39), and measured
+    #    48 s on the 21 GB Wikipedia roll, which has no anchors at all. The
+    #    probe is therefore bounded, and a timeout means "flat": the same
+    #    answer a full scan would have given there, obtained without the scan.
+    PROBE_DEADLINE = 0.5
+    STRUCTURE_DEADLINE = 10.0
+    CHILDREN_DEADLINE = 3.0
+    CHILD_CACHE = 512
+
+    @staticmethod
+    def initial(title: str) -> str:
+        """Browse bucket of a title: A-Z, or '#' for everything else."""
+        c = (title or "")[:1].upper()
+        return c if "A" <= c <= "Z" else "#"
+
+    def structure(self) -> dict:
+        """The codex's shape, once: {mode, roots, sections}. Cached.
+
+        ``mode`` is "contents" when the film has containers, "flat" otherwise.
+        Roots carry their direct-child count so one page can list a shelf
+        without a query per row.
+        """
+        if self._struct is not None:
+            return self._struct
+        flat = {"mode": "flat", "roots": [], "sections": 0}
+        self._struct = flat
+        try:
+            with self._deadline(self.PROBE_DEADLINE):
+                found = self.con.execute(
+                    "SELECT 1 FROM doc WHERE kind=2 LIMIT 1").fetchone()
+        except sqlite3.DatabaseError:
+            found = None
+        if found is None:
+            return flat
+        try:
+            with self._deadline(self.STRUCTURE_DEADLINE):
+                self._counts = {int(k): int(v) for k, v in self.con.execute(
+                    "SELECT context_id, COUNT(*) FROM doc "
+                    "WHERE context_id IS NOT NULL GROUP BY context_id")}
+                rows = self.con.execute(
+                    "SELECT id, title, path, kind, word_count FROM doc "
+                    "WHERE kind=2 AND context_id IS NULL").fetchall()
+        except sqlite3.DatabaseError:
+            return flat
+        # Case-insensitive, then exact, with anything that is not A-Z last.
+        # SQLite's ORDER BY is byte order, which puts every lowercase title
+        # ("iPhone") after "Z" and re-opens the alphabet halfway down the
+        # shelf; sorting here keeps the letter headings monotonic and matches
+        # the keyset comparison below.
+        roots = sorted(
+            ({"id": r["id"], "title": r["title"], "path": r["path"],
+              "kind": r["kind"], "words": r["word_count"] or 0,
+              "children": self._counts.get(r["id"], 0)} for r in rows),
+            key=lambda r: self.sort_key(r["title"]))
+        self._struct = {"mode": "contents", "roots": roots,
+                        "sections": sum(self._counts.values())}
+        return self._struct
+
+    def contents(self, letter: str | None = None, after: str = "",
+                 limit: int = 200) -> dict:
+        """One page of the shelf.
+
+        With a ``letter``: roots under that initial, in title order. Without:
+        the whole shelf, in title order, which is what the canvas shows -- a
+        codex of books is read as one list, not filtered by letter.
+        """
+        st = self.structure()
+        if st["mode"] != "contents":
+            return {"mode": "flat", "total": 0, "sections": 0, "letters": {}}
+        roots = st["roots"]
+        letters: dict[str, int] = {}
+        for r in roots:
+            k = self.initial(r["title"])
+            letters[k] = letters.get(k, 0) + 1
+        if letter:
+            items = [r for r in roots
+                     if self.initial(r["title"]) == letter
+                     and self._after(r["title"], after)]
+        else:
+            items = [r for r in roots if self._after(r["title"], after)]
+        return {"mode": "contents", "letter": letter or "", "letters": letters,
+                "total": len(roots), "sections": st["sections"],
+                "items": items[:limit]}
+
+    @staticmethod
+    def sort_key(title: str) -> tuple:
+        """Shelf order: A-Z insensitively, then everything else under '#'."""
+        t = title or ""
+        c = t[:1].upper()
+        return (0 if "A" <= c <= "Z" else 1, t.casefold(), t)
+
+    @classmethod
+    def _after(cls, title: str, after: str) -> bool:
+        """Keyset comparison that matches the shelf order."""
+        return not after or cls.sort_key(title) > cls.sort_key(after)
+
+    def children(self, root_id: int) -> dict | None:
+        """Direct children of one container, in the film's own order.
+
+        Ordered by `id`, which is the order the source was read: page order for
+        military-medicine (`s0001...`), curriculum order for libretexts. That
+        is the "like a normal book" part -- appendices stay after the chapters.
+        """
+        if self.structure()["mode"] != "contents":
+            return None
+        row = self.con.execute(
+            "SELECT id, title, path, kind, word_count FROM doc WHERE id=?",
+            (root_id,)).fetchone()
+        if row is None:
+            return None
+        items = self._child_cache.get(root_id)
+        if items is None:
+            try:
+                with self._deadline(self.CHILDREN_DEADLINE):
+                    rows = self.con.execute(
+                        "SELECT id, title, path, kind, word_count FROM doc "
+                        "WHERE context_id=? ORDER BY id", (root_id,)).fetchall()
+            except sqlite3.DatabaseError:
+                return None
+            items = [{"id": r["id"], "title": r["title"], "path": r["path"],
+                      "kind": r["kind"], "words": r["word_count"] or 0,
+                      "children": self._counts.get(r["id"], 0)} for r in rows]
+            if len(self._child_cache) >= self.CHILD_CACHE:
+                self._child_cache.clear()
+            self._child_cache[root_id] = items
+        return {
+            "root": {"id": row["id"], "title": row["title"],
+                     "path": row["path"], "kind": row["kind"],
+                     "words": row["word_count"] or 0,
+                     "children": len(items)},
+            "ordered": "id",
+            "items": items,
+        }
+
     # Index-backed by idx_doc_title (upper-initial, title): equality on the
     # initial plus a range start for keyset paging, so even the first page
     # of 'S' on 7M documents never scans.
@@ -427,7 +616,7 @@ class Searcher:
     def get(self, doc_id: int) -> dict | None:
         r = self.con.execute(
             "SELECT id, path, title, kind, importance, in_degree, word_count, "
-            "lead, body, meta, flags, "
+            "lead, body, meta, flags, context_id, "
             "(SELECT c.title FROM doc c WHERE c.id = doc.context_id) AS context "
             "FROM doc WHERE id=?", (doc_id,)).fetchone()
         if r is None:
@@ -451,11 +640,33 @@ class Searcher:
             "kind": r["kind"], "importance": r["importance"],
             "in_degree": r["in_degree"], "word_count": r["word_count"],
             "context": r["context"],
+            "context_id": r["context_id"],
+            "nav": self._siblings(r["context_id"], r["id"]) if r["context_id"] else None,
             "lead": reflow(r["lead"] or ""), "sections": sections,
             "meta": json.loads(r["meta"]) if r["meta"] else {},
             "flags": r["flags"],
             "image_dependent": bool(r["flags"] & FLAG_IMAGE_DEPENDENT),
         }
+
+    def _siblings(self, context_id: int, doc_id: int) -> dict | None:
+        """Where this document sits in its book, and its neighbours.
+
+        One query over the container's direct children, in `id` order -- the
+        order the source was read. That is the whole "read it like a book"
+        affordance: previous section, next section, and a position. It never
+        walks up, so the container loops in libretexts and iFixit are harmless.
+        """
+        rows = self.con.execute(
+            "SELECT id, title FROM doc WHERE context_id = ? ORDER BY id",
+            (context_id,)).fetchall()
+        ids = [r["id"] for r in rows]
+        try:
+            i = ids.index(doc_id)
+        except ValueError:
+            return None
+        prev = {"id": rows[i - 1]["id"], "title": rows[i - 1]["title"]} if i > 0 else None
+        nxt = {"id": rows[i + 1]["id"], "title": rows[i + 1]["title"]} if i + 1 < len(rows) else None
+        return {"position": i + 1, "total": len(rows), "prev": prev, "next": nxt}
 
     def related(self, doc_id: int, limit: int = 12) -> list[dict]:
         """Related documents, link-derived where possible.

@@ -30,12 +30,21 @@ else {
   exit 1
 }
 
-Start-Process $Py -ArgumentList '-u',
-  (Join-Path $Root 'app\codexd.py'),
-  '--codex', (Join-Path $Root 'data\*.codex.db'),
+# Shelf policy lives in <root>\data\shelf.json and is applied by codexd only
+# when it discovers the roll set itself, so the default passes no --codex.
+# CODEX_CODEXES overrides discovery with a semicolon-separated list.
+$CodexArgs = @()
+if ($env:CODEX_CODEXES) {
+  foreach ($pat in ($env:CODEX_CODEXES -split ';')) {
+    if ($pat) { $CodexArgs += @('--codex', $pat) }
+  }
+}
+
+Start-Process $Py -ArgumentList (@('-u',
+  (Join-Path $Root 'app\codexd.py')) + $CodexArgs + @(
   '--art', (Join-Path $Root 'data\art.db'),
   '--port', $Port,
-  '-WindowStyle', 'Hidden',
+  '-WindowStyle', 'Hidden')) `
   -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog |
   Out-Null
 

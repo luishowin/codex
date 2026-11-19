@@ -17,6 +17,7 @@ everything else is derived.
 """
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -45,3 +46,58 @@ def art_db_path() -> Path:
 def codex_globs() -> list[str]:
     """Default codex patterns: every core codex in the data directory."""
     return [str(data_dir() / "*.codex.db")]
+
+
+def shelf_path() -> Path:
+    """The shelf policy file, beside the film it describes."""
+    return data_dir() / "shelf.json"
+
+
+def hidden_rolls() -> set[str]:
+    """Rolls that stay on disk but off the shelf.
+
+    Policy is data, not code: ``data/shelf.json`` lists names under ``hidden``.
+    Moving a roll on or off the shelf is an edit to that file, never a ``mv``
+    and never a rebuild. ``CODEX_HIDDEN`` overrides it (a comma list; empty
+    string means "show everything") so tests and one-off runs stay hermetic.
+    A missing or malformed file hides nothing, which is the safe direction:
+    the projector would rather serve an extra roll than silently drop one.
+    """
+    raw = os.environ.get("CODEX_HIDDEN")
+    if raw is not None:
+        return {n.strip() for n in raw.split(",") if n.strip()}
+    try:
+        doc = json.loads(shelf_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    names = doc.get("hidden") if isinstance(doc, dict) else None
+    if not isinstance(names, list):
+        return set()
+    return {str(n) for n in names}
+
+
+def source_weights() -> dict[str, float]:
+    """Per-source multipliers for the cross-codex merge (``data/shelf.json``).
+
+    Optional and empty by default: `codex/merge.py` already derives a weight
+    from how specialised a codex is for the query. This is the human override
+    for the cases where authority is a judgement, not a statistic -- and it can
+    only multiply, with bad values ignored rather than applied.
+    """
+    try:
+        doc = json.loads(shelf_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    raw = doc.get("weights") if isinstance(doc, dict) else None
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, float] = {}
+    for name, value in raw.items():
+        try:
+            weight = float(value)
+        except (TypeError, ValueError):
+            continue
+        if not (weight > 0 and weight < float("inf")):
+            continue
+        out[str(name)] = weight
+    return out

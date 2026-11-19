@@ -15,6 +15,8 @@ from urllib.parse import unquote, urljoin
 
 from selectolax.lexbor import LexborHTMLParser
 
+from .artifacts import (host_of, looks_like_nav_block, looks_like_shell,
+                        origin_host, strip_lead_furniture, title_key)
 from .hygiene import clean_sections, clean_text
 from .model import (KIND_ARTICLE, KIND_CATEGORY, KIND_DEVICE, KIND_GUIDE, Doc,
                     Section, norm)
@@ -39,6 +41,14 @@ _STRUCTURE_SEL = _HEADING_SEL + ",table"
 _COMMENT_COUNT = re.compile(r"^(?:\d+|one|no)\s+comments?$", re.I)
 
 _STEP_LINE_SEL = ".stepLine, .step-line, li, p"
+
+# A guide's stats strip sometimes survives as a bare value ("No estimate",
+# "1 - 2 hours", "Moderate"). It is metadata, never a summary -- but the words
+# themselves are ordinary, so this only fires when the whole text is that value.
+_STAT_ONLY = re.compile(
+    r"^(?:no\s+estimate|(?:\d+(?:\.\d+)?\s*(?:-\s*\d+(?:\.\d+)?\s*)?)"
+    r"(?:minutes?|mins?|hours?|hrs?|days?)|(?:very\s+)?(?:easy|moderate|difficult))$",
+    re.I)
 
 # The iFixit guide header strip, in the order it renders.
 _GUIDE_HEADER = re.compile(
@@ -169,6 +179,13 @@ class GenericAdapter:
     # Path prefixes that never contain knowledge worth indexing. Checked before
     # the entry is decompressed, so rejecting here costs nothing.
     exclude_prefixes: tuple = ()
+    # Titles that are navigation furniture in *this* source, normalised with
+    # artifacts.title_key. Empty by default: a repeated title is usually
+    # structure (every book has a "Chapter 1"), not noise.
+    exclude_titles: frozenset = frozenset()
+    # The site a URL capture was taken from, set by prepare(). Empty for the
+    # mwoffliner archives, whose paths are not URLs.
+    keep_host: str = ""
     # Below this many words a page is a stub with no informational content.
     min_words: int = 20
     # A short page that links out to many kept pages is a navigation hub and is
@@ -185,7 +202,19 @@ class GenericAdapter:
         Nothing to do for a source whose pages are self-describing, which is
         every mwoffliner archive. Overridden by adapters that have to consult a
         table of contents to know what a page is or where it sits.
+
+        The one thing done here is reading the capture's own host out of the
+        archive name. zimit names the file ``developer.mozilla.org_bc74bccb.zim``,
+        and that is the only trustworthy statement of which site was captured --
+        the majority host *by path* is the capture origin, which is exactly the
+        host that produced the replay shells (MDN's 141 stubs live on
+        mdnplay.dev, while its 1,082 real pages are developer.mozilla.org).
         """
+        try:
+            name = bytes(archive.get_metadata("Name")).decode("utf-8", "replace")
+        except Exception:
+            return
+        self.keep_host = origin_host(name)
 
     def source_for(self, archive, entry, raw: str) -> str | None:
         """The HTML to actually parse for this entry.
@@ -198,10 +227,23 @@ class GenericAdapter:
 
     def skip_path(self, path: str) -> bool:
         """Cheap pre-filter: reject by path without touching the cluster."""
-        return path.startswith(self.exclude_prefixes) if self.exclude_prefixes else False
+        if self.exclude_prefixes and path.startswith(self.exclude_prefixes):
+            return True
+        if self.keep_host:
+            host = host_of(path)
+            # A capture that followed a link off-site kept that page; it
+            # belongs to another codex, not this one.
+            if host and not (host == self.keep_host
+                             or self.keep_host.endswith("." + host)):
+                return True
+        return False
 
     def should_keep(self, doc: Doc) -> bool:
-        """Reject stubs and dead ends after parsing."""
+        """Reject stubs, dead ends and capture artefacts after parsing."""
+        if looks_like_shell(doc.path, doc.word_count):
+            return False
+        if self.exclude_titles and title_key(doc.title) in self.exclude_titles:
+            return False
         if doc.word_count >= self.min_words:
             return True
         return len(doc.links) >= self.hub_min_links
@@ -231,6 +273,17 @@ class GenericAdapter:
 
         sections = self._split_headings(root)
         sections, dependent = clean_sections(sections)
+        # Page chrome at the top of the page is not a summary: "On this page",
+        # "Also called: RA", a repeated title, or a list of section labels.
+        # Walked past before the lead is chosen, so the lead is real text or
+        # the next section's, never a picker.
+        if sections and sections[0].kind == "text":
+            t = strip_lead_furniture(sections[0].t, title)
+            if looks_like_nav_block(t):
+                t = ""
+            sections[0].t = t
+            if not t and sections[0].h and norm(sections[0].h) == norm(title):
+                sections.pop(0)
         lead = ""
         if sections and not sections[0].h and sections[0].kind == "text":
             lead = sections[0].t
@@ -548,13 +601,16 @@ class IFixitAdapter(GenericAdapter):
                     if sec.kind == "text":
                         sec.t = self._scrub_header(sec.t)
                 # A heading left with nothing under it is noise -- typically the
-                # page header block once the byline strip is scrubbed away.
+                # page header block once the byline strip is scrubbed away --
+                # and a bare stats value ("No estimate") is not a section.
                 doc.sections = [s for s in doc.sections
-                                if s.kind == "table" or s.t.strip()]
+                                if s.kind == "table"
+                                or (s.t.strip() and not _STAT_ONLY.match(s.t.strip()))]
                 doc.lead = intro or self._scrub_header(doc.lead)
-                if not doc.lead:
+                if not doc.lead or _STAT_ONLY.match(doc.lead.strip()):
                     # Scrubbing can empty a lead that was nothing but the byline
                     # strip. Prefer real body text over no preview at all.
+                    doc.lead = ""
                     for sec in doc.sections:
                         body = sec.search_text.strip()
                         if body:
@@ -563,13 +619,15 @@ class IFixitAdapter(GenericAdapter):
             return doc
 
         sections, dependent = clean_sections(sections)
-        # A heading with nothing under it is noise: either the page header block
-        # after scrubbing, or a step whose only content was a photo.
-        sections = [s for s in sections
-                    if s.kind == "table" or self._scrub_header(s.t)]
+        # Scrub the guide header strip from every section first, then drop what
+        # is left empty or is a bare stats value: "No estimate" was the lead on
+        # 5,053 guides because it survived as a section.
         for s in sections:
             if s.kind == "text":
                 s.t = self._scrub_header(s.t)
+        sections = [s for s in sections
+                    if s.kind == "table"
+                    or (s.t.strip() and not _STAT_ONLY.match(s.t.strip()))]
         # Derived before the Tools section is prepended, or a guide with no
         # intro would take its tool list as the preview -- "iFixit Opening Tool
         # Phillips #000 Screwdriver" tells a searcher nothing about the repair.
@@ -639,6 +697,14 @@ class LibreTextsAdapter(GenericAdapter):
 
     name = "libretexts"
 
+    # Navigation, one copy per book across ~1,500 books. The contents view the
+    # codex now renders replaces them, the licence lives in the cassette
+    # manifest, and none of these carry prose worth reading. "Preface",
+    # "Glossary" and "Index" stay: they are real book matter.
+    exclude_titles = frozenset(title_key(t) for t in (
+        "Detailed Licensing", "InfoPage", "Table of Contents",
+        "Front Matter", "Back Matter", "TitlePage"))
+
     _PAGE = "index/page_"
     _BODY = "content/page_content_"
 
@@ -675,6 +741,7 @@ class LibreTextsAdapter(GenericAdapter):
             or "libretexts" in (meta.get("Creator") or "").lower()
 
     def prepare(self, archive) -> None:
+        super().prepare(archive)
         # Held so parse() can resolve the hierarchy; parse() is handed only the
         # raw text and a path, and the graph has to be built from the TOC.
         self._archive = archive
