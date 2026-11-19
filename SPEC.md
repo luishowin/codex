@@ -63,26 +63,66 @@ networks only). Every JSON response is UTF-8. Error shape:
 |---|---|---|---|
 | GET | `/`, `/index.html`, `/read` | `/read` takes `?codex=&id=` and opens the reader | the canvas shell (HTML) |
 | GET | `/static/<path>` | — | canvas assets (never outside `app/web/`) |
-| GET | `/api/health` | — | `{"ok", "api": 1, "codexes": [codex…], "art": {images, bindings, bytes} \| null}` |
-| GET | `/api/search` | `q, n (1–100), deep (0/1), codex?` | `{hits, total, capped, per_codex, ms, deep, q}` |
+| GET | `/api/health` | — | `{"ok", "api": 1, "codexes": [codex…], "hidden": [names], "shelf": path, "art": {images, bindings, bytes} \| null}` |
+| GET | `/api/library` | `all? (0/1)` | `{schema, generated_at, generated_by, note, cassettes: [manifest…]}` — the shelf currently served; `all=1` adds every roll in the data directory, loaded or not |
+| GET | `/api/search` | `q, n (1–100), deep (0/1), codex?` | `{hits, total, capped, per_codex, weights, ms, deep, q}` |
 | GET | `/api/browse` | `prefix (A–Z or #), n (1–200), after?, codex?` | `{hits, prefix}` (titles in order) |
+| GET | `/api/index` | `codex`, `prefix? (A–Z or #)`, `after?`, `n (1–500)`, or `codex, root=<doc id>` | `{codex, mode: contents\|flat, letter, letters, total, sections, unit, items}`; with `root`: `{codex, root, ordered: "id", items}` |
 | GET | `/api/shelf` | `letter (A–Z or #)` | `{letter, items: [{subject, discipline, slug, thumb_url, codex, doc_id}]}` |
-| GET | `/api/doc` | `codex, id` | `{id, path, title, kind, importance, in_degree, word_count, context, lead, sections, meta, related, codex}` |
+| GET | `/api/doc` | `codex, id` | `{id, path, title, kind, importance, in_degree, word_count, context, context_id, nav, lead, sections, meta, related, codex}` |
 | GET | `/api/art` | `codex+id` or `slug` | credit record + `hero_url`/`thumb_url` |
 | GET | `/art/<slug>[.thumb].webp` | — | image bytes, immutable cache headers |
 | POST | `/api/load` | `path` (file or glob) | `{loaded: [names], codexes: [...]}` |
 | POST | `/api/unload` | `codex` | `{unloaded, codexes: [...]}` or 404 |
 
+`/api/index` reports a codex's shape. `mode: "contents"` means the film has
+`kind=2` containers (manuals, courses, devices) and should be browsed as a
+table of contents; `"flat"` means the alphabetical `/api/browse` is the right
+door. In contents mode `items` are top-level containers in shelf order —
+case-insensitive, A–Z, with everything else under `#` last. With no `prefix`
+the **whole shelf** is returned, paged by `after`; that is what the canvas
+renders, because a codex of books is read as one list with letter headings, not
+filtered by letter. `prefix` still narrows to one initial for any client that
+wants it. `root=<id>` returns one container's direct children in
+**`id` order** — the order the source was read, which is page order for the PDF
+manuals and curriculum order for libretexts — each again carrying `children` so
+the client can descend. The relation is only ever followed downward: container
+graphs are not guaranteed acyclic (libretexts and iFixit both contain loops),
+and nothing walks up. `unit` is presentation only (`book`, `device`, `entry`).
+
+`/api/browse` is unchanged, including its meaning for flat codexes.
+
+`nav` is present when the document belongs to a container: `{position, total,
+prev, next}`, with `prev`/`next` as `{id, title} | null` and the order being the
+container's `id` order (the same order `/api/index?root=` returns). It is what
+lets a reader move through a manual section by section; flat documents have
+`nav: null` and `context_id: null`.
+
 Hit shape: `{id, path, title, importance, kind, context, score, snippet,
-tier, relaxed, codex, art?}`. `total` counts up to a 1,000 cap, then
+tier, relaxed, codex, art?, also?}`. `also` appears when another codex carries
+a page with the same title: the page is returned once, and `also` names the
+others as `[{codex, id}]`. `total` counts up to a 1,000 cap, then
 `1,000+` (`capped: true`) — counts are floors, not exact. `related` entries:
 `{id, title, importance, context, source: 'links'|'similar'}`.
+
+`/api/search` fuses the per-codex pages (`codex/merge.py`): each hit's `score`
+is multiplied by a source weight derived from how specialised that codex is for
+the query (the share of its titles that mention the terms, requiring a cluster
+of at least three), then titles are de-duplicated. `weights` reports what was
+applied, so a ranking result is explainable after the fact. An explicit
+`&codex=` query uses one codex and therefore gets neutral weights (1.0).
 
 Promises: v1 responses only gain keys; `codex` names are the filenames;
 unloading never touches other rolls; missing `art.db`/deep files degrade to
 fewer pictures/depth, never errors.
 
-## 3. Cassettes (manifest v1) — specified, not implemented
+`/api/library` manifests are **shelf** manifests: `sealed` is false, every
+`sha256` is null until a pack step computes it, and `cassette_id` is prefixed
+`shelf-`. They describe film that exists, and never claim a digest. `hidden`
+in `/api/health` names rolls present on disk but kept off the shelf by
+`data/shelf.json`; an explicit `--codex` is never filtered.
+
+## 3. Cassettes (manifest v1) — format specified; shelf manifests served
 
 A cassette is a **self-describing directory**, not one archive file: the
 largest core is over 24 GB, and FAT32 refuses files above 4 GB. The volume
@@ -115,6 +155,7 @@ CODEX-CASSETTE/
 | `cover` | object | `{hero_slug, subject, palette}`; `palette` is one of ink, ember, moss, slate, wine, sand |
 | `licence` | object | `{name, url, note}` |
 | `manifest_sha256` | string\|null | digest of this manifest with the field itself blanked |
+| `sealed` | bool | `false` for a shelf manifest; `true` once packed |
 
 Rules:
 
@@ -125,7 +166,8 @@ Rules:
 - `role: deep` is optional; a cassette without it reads, with less depth.
 - Readers ignore unknown keys, so this section can gain fields.
 - Verification, import and return are the library service's job; the
-  manifest is the contract they share. Until `/api/library` exists, the
-  canvas reads `app/web/mock/library.json`, generated from real film by
-  `app/tools/mock_library.py`, and labels the shelf as a fixture.
+  manifest is the contract they share. `GET /api/library` now serves shelf
+  manifests built by `app/codex/cassette.py`; `app/web/mock/library.json`
+  (written by `app/tools/mock_library.py` through the same builder) remains
+  only as the offline fallback when the canvas is opened without a daemon.
 

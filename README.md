@@ -18,9 +18,9 @@ Three components, each replaceable without touching the others:
   (ingest, build, rank, search). It holds the loaded rolls open and answers
   one stable HTTP API. A roll is text plus its link graph — the links are
   the ranking signal, not packaging.
-- **Canvas** — the front end: `app/web/` (plus `codex-site/` for the demo
-  page). It only speaks the projector's API and degrades gracefully
-  (no `art.db`, no pictures, nothing else notices).
+- **Canvas** — the front end: `app/web/`, one shell shared by the browser and
+  the desktop window. It only speaks the projector's API and degrades
+  gracefully (no `art.db`, no pictures, nothing else notices).
 
 Everything else in this repo serves one of the three: `app/codexctl.py`
 and `app/tools/` cut new film, `scripts/` start and stop the projector.
@@ -37,16 +37,30 @@ and `app/tools/` cut new film, `scripts/` start and stop the projector.
 ├── AGENTS.md              rules for AI coding agents
 ├── CLAUDE.md              Windows-era operational notes
 ├── app/                   the application
-│   ├── codexd.py          warm search daemon (:8765)
+│   ├── codexd.py          warm search daemon (:8765), the only HTTP surface
 │   ├── codexctl.py        build / info / search CLI
 │   ├── launcher.py        Windows hotkey overlay (Windows-only)
-│   ├── codex/             package: paths, adapters, build, graph, index, search, ...
-│   ├── tools/             calibrate, gaps, stats, art_*, milmed_*, mock_library, attic/
+│   ├── codex/             the library (no UI, no server):
+│   │   ├── paths.py       every path; shelf policy; merge weights
+│   │   ├── ingest.py      ZIM / Markdown -> Doc
+│   │   ├── build.py       pass 1: extract, write film
+│   │   ├── graph.py       pass 2: PageRank, related, context
+│   │   ├── index.py       pass 3: fts_quick + fts_deep
+│   │   ├── schema.py      the film format, indexes, pragmas
+│   │   ├── adapters.py    per-source extraction
+│   │   ├── artifacts.py   capture artefacts, title/lead rules
+│   │   ├── hygiene.py     image-reference and text repair
+│   │   ├── model.py       Doc / Section / reflow
+│   │   ├── search.py      rank *inside* one codex; contents; nav
+│   │   ├── merge.py       fuse codexes: specialisation, dedupe
+│   │   ├── cassette.py    SPEC §3 manifests (shelf + fixture)
+│   │   └── art.py         image store, bindings, annotations
+│   ├── tools/             calibrate, audit, gaps, stats, art_*, milmed_*, mock_library, attic/
 │   ├── tests/             pytest suite
 │   └── web/               canvas: index.html, codex.css, app.js, views/, fonts/, mock/
-├── data/                  built corpora: *.codex.db, *.codex-deep.db, art.db
+├── data/                  built corpora: *.codex.db, *.codex-deep.db, art.db, shelf.json
 ├── scripts/               linux/ macos/ windows/ each with start, stop, status
-└── _work/                 generated artifacts: art_cache, logs, manifests, pidfile
+└── _work/                 generated artifacts: art_cache, logs, manifests, pidfile, backups
 ```
 
 `app/codex/paths.py` derives every location from this layout, so the project
@@ -143,6 +157,14 @@ decision**: V0.1 shipped 408,876 images in a 2 GB sidecar and they were unusable
 gone — pipeline, storage, schema, UI. 86 tests green. Embeddings, the TUI, and
 the MCP server are scaffolded but not written.
 
+**Where you are now (2026-11-20).** Ten codexes on the shelf — **7,259,704
+documents, 33.77 GB** — with three Wikipedia subsets on disk but unloaded
+(`data/shelf.json`). A codex with containers browses as a shelf of books with its
+contents intact; ranking across codexes is by source specialisation, not raw
+score; five rolls were rebuilt to strip capture artefacts and page chrome; the
+reader has previous/next inside a book; and the client refuses to reopen a saved
+page against a film that has since been rebuilt. 239 tests green.
+
 V0.4 added the `libretexts` adapter — 20,926 documents of nursing, anatomy and
 pharmacology that a generic build had turned into 6 — and the milmed
 extraction (then on `D:\milmed\`), 1.64M
@@ -197,7 +219,7 @@ which is what `art.db` is — see *The image layer*.
 
 **For searching, no. For pictures and three archives, yes — keep it installed.**
 
-13 of the 18 archives on disk are converted, and they hold **7,333,360
+13 of the 18 archives on disk are converted, and they hold **7,332,410
 documents** — around 97.6% of the ~7.51M articles on disk, answering in
 milliseconds. But "most" is not "all", and the remainder is not a rounding error.
 
@@ -219,18 +241,26 @@ milliseconds. But "most" is not "all", and the remainder is not a rounding error
 | source archive | codex | documents |
 |---|---|---:|
 | `wikipedia_en_all_nopic_2026-06` | `wikipedia` | 7,077,143 |
-| `ifixit_en_all_2025-12` | `ifixit` | 82,269 |
-| `wikipedia_en_medicine_maxi_2026-04` | `wikipedia-medicine` | 68,871 |
+| `ifixit_en_all_2025-12` | `ifixit` | 82,231 |
+| `wikipedia_en_medicine_maxi_2026-04` | `wikipedia-medicine` — *off shelf* | 68,871 |
 | `wikiversity_en_all_maxi_2026-05` | `wikiversity` | 49,886 |
-| `libretexts.org_en_med_2025-01` | `libretexts-med` | 20,926 |
-| `medlineplus.gov_en_all_2025-01` | `medlineplus` | 14,932 |
+| `libretexts.org_en_med_2025-01` | `libretexts-med` | 20,169 |
+| `medlineplus.gov_en_all_2025-01` | `medlineplus` | 14,930 |
 | `wikivoyage_en_europe_maxi_2026-03` | `wikivoyage-europe` | 9,118 |
-| `wikipedia_en_climate-change_nopic_2026-04` | `wikipedia-climate` | 3,733 |
-| `www.ready.gov_en_2024-12` | `ready-gov` | 2,006 |
+| `wikipedia_en_climate-change_nopic_2026-04` | `wikipedia-climate` — *off shelf* | 3,733 |
+| `www.ready.gov_en_2024-12` | `ready-gov` | 2,002 |
 | `nhs.uk_en_medicines_2025-12` | `nhs-medicines` | 1,996 |
-| `developer.mozilla.org_bc74bccb` | `mdn` | 1,231 |
+| `developer.mozilla.org_bc74bccb` | `mdn` | 1,082 |
 | `irp.fas.org_en_military-medicine_2026-05` | `military-medicine` | 1,147 |
-| `wikipedia_en_100_maxi_2026-04` | `wikipedia-100` | 102 |
+| `wikipedia_en_100_maxi_2026-04` | `wikipedia-100` — *off shelf* | 102 |
+
+Three of those 13 — `wikipedia-100`, `wikipedia-climate`, `wikipedia-medicine` —
+are **built but off the shelf**: joined by `path`, they are 100%, 99.8% and
+99.5% contained in the full Wikipedia roll, so they only made the shelf look
+duplicated. They are not deleted (`data/shelf.json` hides them, and
+`wikipedia-100`'s source ZIM is already gone, so it could never be rebuilt).
+They remain legitimate as standalone cassettes — a sample disc, a climate
+cartridge, a med-kit cartridge — just not next to their superset.
 
 Still Kiwix-only, and why:
 
@@ -280,10 +310,10 @@ The whole corpus as loaded by the daemon:
 
 | | |
 |---|---|
-| Codexes | 13 |
-| Documents | **7,333,360** |
-| Words | **4,357,093,566** |
-| On disk | **33.91 GB** (22.30 core + 11.61 deep) |
+| Codexes | **10** (13 built; three Wikipedia subsets off shelf) |
+| Documents | **7,259,704** |
+| Words | **4,291,424,010** |
+| On disk | **33.77 GB** (23.12 core + 10.65 deep) |
 | Source archives | 68.46 GB → **2.0x smaller** |
 
 The four smallest were built in one 3-minute run and are worth noting for what
@@ -393,14 +423,22 @@ hash (`#/library`, `#/c/<name>`, `#/a/<codex>/<id>`, `#/search/<q>`,
 `#/browse/<codex>/<letter>`, `#/settings`), so the same files work as a plain
 page, inside the future Tauri window, and from a `/read?codex=&id=` permalink.
 
-The shelf is a specimen of the cassette format, not a cassette service:
-`app/tools/mock_library.py` reads each `*.codex.db` read-only (plus `art.db`),
-writes `app/web/mock/library.json`, and the canvas falls back to it only when
-`/api/library` is absent. Digests are real SHA-256 below 2 GB and `null` above
-it — a fixture never invents a hash. Regenerate with:
+The shelf is served by the projector: `GET /api/library` returns one SPEC §3
+manifest per loaded roll, built by `app/codex/cassette.py`. These are *shelf*
+manifests — `sealed: false`, every `sha256` null, ids prefixed `shelf-` — so
+nothing claims to be a packed cassette yet. `?all=1` adds rolls that are on
+disk but not loaded. `app/tools/mock_library.py` writes
+`app/web/mock/library.json` through the same builder; the canvas reads it only
+when no daemon is there.
+
+Which rolls are on the shelf is data, not code: `data/shelf.json` lists
+`hidden` rolls (currently the three Wikipedia subsets that duplicate the full
+roll). Hiding costs nothing and deletes nothing — remove a name to bring it
+back. An explicit `--codex` is never filtered, and `CODEX_CODEXES` overrides
+discovery entirely.
 
 ```bash
-python app/tools/mock_library.py          # write the fixture
+python app/tools/mock_library.py          # write the fallback fixture
 python app/tools/mock_library.py --check  # exit 1 if stale
 ```
 
@@ -472,6 +510,90 @@ properly in V0.1 and removed on the evidence, not skipped. The curated `art.db`
 added in V0.6 does not reverse it: those images come from Wikimedia at build
 time, are licence-filtered at ingest, and live in their own file. The ban is on
 the *source*, not on pictures.
+
+**The merge compares specialisation, not raw scores.** Raw scores rank *within*
+one codex: importance is that codex's own PageRank, so cross-codex comparison is
+a comparison of two different graphs, and the bigger graph wins. Measured on the
+shelf before the fix: `javascript promise` returned four Wikipedia articles and
+no MDN at n=8; `hurricane evacuation kit` returned Wikipedia and Wikiversity and
+no ready.gov. Both sources answered correctly when asked directly, so the data
+was right and the merge was wrong.
+
+The fix (`codex/merge.py`) is not a hand-tuned table per source. It asks each
+codex how many of its own *titles* mention the query's terms, and weights by
+that share — MDN: 6 of 1,231 (0.49%) for "javascript promise"; Wikipedia: 500 of
+7,077,143 (0.007%). The ratio is scale-free, so no absolute threshold is needed
+and a new codex is not penalised for being new. Measured after: MDN first,
+ready-gov first, MedlinePlus still first on "diabetes", iFixit still first on
+"iphone battery", Wikipedia still first on "tourniquet" (where every codex has a
+single matching title, so the signal correctly has no opinion). The probe costs
+0.5 ms across ten codexes.
+
+Deliberately absent: a per-codex slot cap. Weights already break the monopoly,
+and a cap would cut the source that is genuinely right (MedlinePlus returned
+four good hits on "diabetes"). Titles are de-duplicated after fusion — a
+repeated title inside one codex is dropped, one shared *between* codexes is kept
+once and labelled `also`, because "MedlinePlus also has this" is information.
+
+**Browse indexes containers, not leaves.** A codex is either a set of
+independent pages or a shelf of books, and the film already says which: sections
+name their container in `context_id`, containers are `kind=2`. Sorting the
+flattened set by title is what put military-medicine's "APPENDIX 1..9" next to
+each other under A — ten books fractured into one pile. So a book codex shows
+its **entire shelf on one page**, in title order, with letter headings inside
+the list and no filter: 22 manuals for military-medicine, 22 courses for
+libretexts, 1,582 devices for iFixit (paged from the API, still one list).
+Opening a book lists its children in `id` order, which is page order for the
+manuals. Flat codexes keep the alphabetical door, because there the alphabet
+*is* the index.
+
+Two things this design refuses to do. It never walks *up* the container graph:
+libretexts and iFixit both link containers in a loop
+(`Fundamentals of Nursing → Nursing → Fundamentals`), so only downward
+expansion is safe, and that is also all a table of contents needs. And it never
+scans a big roll to find out: with no index on `kind`, `WHERE kind=2` costs
+48 s on the 21 GB Wikipedia roll and nothing on a codex whose first container is
+at id 1, so the probe is bounded at 0.5 s and a timeout means "flat" — the same
+answer the scan would have given, without the scan.
+
+**Read it like a book, not a database.** A section inside a container carries
+its book and its place in it: the reader header reads *Military Medicine ·
+Division and Brigade Surgeons' Handbook (FM 4-02.21)*, and the footer is
+`← Previous · 25 of 40 · Next →`, following the container's `id` order — the
+same order the contents view shows. `/api/doc` returns `nav` for this; on a flat
+codex it is `null`. That is what turns 1,125 chunks into a manual you can read
+straight through, and it costs one query over the container's direct children.
+
+**What a build drops, and what it repairs.** Four rules, each narrow because
+they delete documents (`codex/artifacts.py`):
+
+- **Replay shells.** zimit stores a page under its replayed URL; a
+  `…/runner.html?uuid=…` stub with under 80 words is a JS shell, not a page.
+  MDN had 123 of them.
+- **Foreign hosts.** A capture follows links off-site. The archive's own `Name`
+  metadata says which site it is (`developer.mozilla.org_bc74bccb`), and only
+  that host is kept. The majority host by path is *not* the answer — it is the
+  capture origin, which is exactly where MDN's 141 shells lived.
+- **Language pickers.** ready.gov opened 1,463 of its leads (84%) with
+  "English / Español / 简体中文 / …". Stripped only when two or more language
+  names stand alone at the very start, so a sentence that mentions languages
+  survives.
+- **Lead chrome.** "On this page", "Also called: RA", a page repeating its own
+  title, and a three-or-more-line list of labels (a table of contents where the
+  summary should be) are skipped before the lead is chosen. MedlinePlus had
+  1,818 such leads; a guide's stats strip ("No estimate") was the preview on
+  5,053 iFixit guides.
+- **One source's navigation.** LibreTexts repeats "Table of Contents",
+  "Front Matter", "Detailed Licensing", "InfoPage" and "Back Matter" once per
+  book across ~1,500 books; 757 documents with no reading value. "Preface",
+  "Glossary" and "Index" stay.
+
+Measured after (2026-11-20, `tools/audit.py` before/after): MDN 1,231 → 1,082
+(149 artefacts, zero left), ready.gov 2,006 → 2,002 (4 FEMA links; 1,463 leads
+repaired, none left), libretexts 20,926 → 20,169 (757 navigation pages, books
+and their 20,105 sections intact), MedlinePlus 14,932 → 14,930 (chrome leads
+gone), iFixit 82,269 → 82,231 (5,053 "No estimate" previews fixed). Whole-shelf
+`would drop` is now 2.
 
 **The image layer never touches `search.py`.** Joining the binding table into the
 ranked CTE is the obvious shape and it is the one thing this design refuses to
@@ -1010,7 +1132,12 @@ changes are easy to make and impossible to eyeball.
 `calibrate.py` is the useful one: point it at any ZIM to get extraction ratios,
 compression, and a projected output size before committing to a long build — and,
 just as importantly, the document count it expects, which is what tells you a
-build has silently failed. `gaps.py` reports what's missing or degraded in a
+build has silently failed. `audit.py` is the second: it scores every roll on the
+shelf for the diseases that actually shipped (zimit replay shells, off-host
+pages, URL-shaped titles, language-switcher leads, near-empty documents) with
+samples and a "would drop" count, so a rebuild is a measured diff rather than a
+hope. It deliberately does *not* call a repeated title junk — every book has a
+"Chapter 1". `gaps.py` reports what's missing or degraded in a
 built codex. `try_hygiene.py` dry-runs the image-reference rules against a built
 corpus, `rebuild_deep.py` rebuilds a deep index without a full rebuild, and
 `stats.py` is a quick summary. `milmed_ocr.py` rebuilds `milmed/` from the
@@ -1037,15 +1164,6 @@ target the removed image pipeline and won't run unmodified.
   currently blocked on `users/*` noise and lost Q&A structure. See *Will it run
   on any ZIM?*
 - **A ready.gov subclass** to strip the language switcher out of its leads.
-- **Per-source weighting in the merge — this has now bitten.** `search_all` sorts
-  by raw score across codexes, and importance is PageRank *within* one codex, so
-  a 7M-document source outranks a 1,231-document one on its own home turf.
-  Measured after adding the four small codexes: `javascript promise` returns four
-  Wikipedia articles and no MDN; `hurricane evacuation kit` returns Wikipedia and
-  Wikiversity and no ready.gov. Both sources answer correctly when queried
-  directly (`&codex=mdn` → *Using the Fetch API*; `&codex=ready-gov` →
-  *Hurricanes*), so the data is right and the merge is wrong. This is the next
-  ranking job.
 - **Stopwords.** "how plants convert sunlight" returns *Sunlight*, not
   *Photosynthesis*, and "how does a transformer work" is the slowest query
   measured (319 ms) because it relaxes through every tier. Matters more for
