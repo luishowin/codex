@@ -18,7 +18,18 @@ export function render(route, ctx) {
   const core = film.find(f => f.role === 'core') || film[0] || {};
   const deep = film.find(f => f.role === 'deep');
   const total = film.reduce((a, f) => a + (f.bytes || 0), 0);
-  const mock = cas._mock || ctx.libraryMock;
+  const mock = cas._mock === true || ctx.libraryMock;
+  const sealed = !mock && cas.sealed === true;
+  const note = mock
+    ? `<div class="cs-note"><b>Fixture shelf.</b> This manifest is generated from the
+        database on disk, not from a sealed cassette. Files over 2 GB were not hashed, and no
+        manifest digest exists yet. The cassette tool — pack, verify, import — is the next slice.</div>`
+    : sealed
+      ? `<div class="cs-note"><b>Sealed cassette.</b> Manifest digest
+        <code>${esc(cas.manifest_sha256 || 'missing')}</code>. Verification: not implemented yet.</div>`
+      : `<div class="cs-note"><b>Shelf manifest.</b> Built from film on disk by the
+        projector. Nothing has been sealed: no SHA-256 has been computed and no manifest digest
+        exists. Packing a cassette is what seals it.</div>`;
 
   const shaRow = f => {
     const name = String(f.file || '').split('/').pop();
@@ -51,11 +62,7 @@ export function render(route, ctx) {
             data-copy-label="Film SHA-256 copied">Copy SHA</button>` : ''}
           <button class="btn ghost" data-act="return">Return…</button>
         </div>
-        ${mock ? `<div class="cs-note"><b>Fixture shelf.</b> This manifest is generated from the
-          database on disk, not from a sealed cassette. Files over 2 GB were not hashed, and no
-          manifest digest exists yet. The cassette tool — pack, verify, import — is the next slice.</div>`
-          : `<div class="cs-note"><b>Sealed cassette.</b> Manifest digest
-          <code>${esc(cas.manifest_sha256 || 'missing')}</code>. Verification: not implemented yet.</div>`}
+        ${note}
       </div>
     </div>
 

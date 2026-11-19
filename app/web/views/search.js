@@ -16,6 +16,8 @@ export async function mount(el, route, ctx) {
   }
   const hits = d.hits || [];
   const terms = String(route.q).toLowerCase().split(/\s+/).filter(Boolean);
+  // A page two codexes both carry is returned once; this says who else had it.
+  const alsoOf = h => (h.also || []).map(a => esc(a.codex));
   ctx.setResults(hits.map(h => ({ ...h, codex: h.codex })), route);
 
   el.innerHTML = `<div class="res">
@@ -27,7 +29,8 @@ export async function mount(el, route, ctx) {
     ${hits.length ? hits.map((h, i) => `<button class="rhit${i === 0 ? ' sel' : ''}" data-hit="${i}">
         <span class="t"><span class="tt">${highlight(h.title, terms)}</span>${h.context ? `<em>${esc(h.context)}</em>` : ''}</span>
         <span class="s">${highlight(h.snippet || '', terms)}</span>
-        <span class="m">${esc(h.codex || '')}${h.tier ? ` · ${esc(h.tier)}` : ''}</span>
+        <span class="m">${esc(h.codex || '')}${h.tier ? ` · ${esc(h.tier)}` : ''}${
+          (alsoOf(h).length) ? ` · also in ${alsoOf(h).join(', ')}` : ''}</span>
       </button>`).join('')
       : `<p class="res-empty">Nothing matched${deep ? '' : ' in titles'}.
          ${deep ? 'Try fewer words.' : 'Switch to full text in the search popover.'}</p>`}

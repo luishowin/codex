@@ -6,7 +6,8 @@
  "cassettes": [
   {
    "schema": 1,
-   "cassette_id": "mock-f6c70c9350ca",
+   "cassette_id": "shelf-e6e33481d3fb11de885e",
+   "sealed": false,
    "name": "wikipedia",
    "title": "Wikipedia",
    "issue": "2026.06",
@@ -24,13 +25,13 @@
    "film": [
     {
      "role": "core",
-     "file": "film/wikipedia.codex.db",
+     "file": "wikipedia.codex.db",
      "bytes": 24228651008,
      "sha256": null
     },
     {
      "role": "deep",
-     "file": "film/wikipedia.codex-deep.db",
+     "file": "wikipedia.codex-deep.db",
      "bytes": 11082452992,
      "sha256": null
     }
@@ -50,15 +51,16 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-b04ed0ac2668",
+   "cassette_id": "shelf-f6859244399c6fbf63f2",
+   "sealed": false,
    "name": "ifixit",
    "title": "iFixit in English",
    "issue": "2025.12",
-   "created_at": "2026-07-27T03:06:24",
+   "created_at": "2026-11-20T01:29:29",
    "created_by": "Luis Maina",
    "contents": {
-    "documents": 82269,
-    "words": 32511233,
+    "documents": 82231,
+    "words": 32641768,
     "language": "eng",
     "adapter": "ifixit",
     "source": "ifixit_en_all_2025-12.zim",
@@ -68,15 +70,15 @@
    "film": [
     {
      "role": "core",
-     "file": "film/ifixit.codex.db",
-     "bytes": 166658048,
-     "sha256": "33657728b4a08172bf226a38e9731c7d5c31cae4a5382974332d37014a56e61a"
+     "file": "ifixit.codex.db",
+     "bytes": 168665088,
+     "sha256": "5fc85afb8003db7b677ccc9709b52fad71fb18026612b2293b546356ca81e9fb"
     },
     {
      "role": "deep",
-     "file": "film/ifixit.codex-deep.db",
-     "bytes": 81133568,
-     "sha256": "210bda28afec6141b0a72567c3aab95c84a09fa45f0cd147713f1819168cb498"
+     "file": "ifixit.codex-deep.db",
+     "bytes": 81084416,
+     "sha256": "8c8238bc2f8ad2825ca88fa7d94481690e642144262d30f1596400ec04ffb6cf"
     }
    ],
    "cover": {
@@ -94,51 +96,8 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-fdb98cdb4844",
-   "name": "wikipedia-medicine",
-   "title": "WikiMed Medical Encyclopedia",
-   "issue": "2026.04",
-   "created_at": "2026-07-27T21:49:50",
-   "created_by": "Luis Maina",
-   "contents": {
-    "documents": 68871,
-    "words": 57905545,
-    "language": "eng",
-    "adapter": "wikipedia",
-    "source": "wikipedia_en_medicine_maxi_2026-04.zim",
-    "source_date": "2026-04-11",
-    "schema": 1
-   },
-   "film": [
-    {
-     "role": "core",
-     "file": "film/wikipedia-medicine.codex.db",
-     "bytes": 302387200,
-     "sha256": "1328e99e2b20cabcb4776396d2770592bb1d8339d737d013a703f59aa1298688"
-    },
-    {
-     "role": "deep",
-     "file": "film/wikipedia-medicine.codex-deep.db",
-     "bytes": 147845120,
-     "sha256": "967f68da76b4fe80169f0978449e445a96a8c414331f94f874a52b4a7a2ddf33"
-    }
-   ],
-   "cover": {
-    "hero_slug": "heart",
-    "subject": "Heart",
-    "palette": "sand"
-   },
-   "licence": {
-    "name": "CC BY-SA 4.0",
-    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
-    "note": "Verify before redistribution"
-   },
-   "manifest_sha256": null,
-   "_mock": true
-  },
-  {
-   "schema": 1,
-   "cassette_id": "mock-016573e9bda8",
+   "cassette_id": "shelf-51e73f64fe827acef787",
+   "sealed": false,
    "name": "wikiversity",
    "title": "Wikiversity",
    "issue": "2026.05",
@@ -156,13 +115,13 @@
    "film": [
     {
      "role": "core",
-     "file": "film/wikiversity.codex.db",
+     "file": "wikiversity.codex.db",
      "bytes": 189403136,
      "sha256": "4694981e0a7c28c444fa193792d87c53d5e783f3db07d7fec0b2f94752512552"
     },
     {
      "role": "deep",
-     "file": "film/wikiversity.codex-deep.db",
+     "file": "wikiversity.codex-deep.db",
      "bytes": 112898048,
      "sha256": "b2ae9a189dd29d1a1a2bbf7bc1797cfdfb393dc5fa3a913e2bd25e8e264c00f1"
     }
@@ -182,15 +141,16 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-9da839537009",
+   "cassette_id": "shelf-7218bef066ea9d6562f8",
+   "sealed": false,
    "name": "libretexts-med",
    "title": "Medicine LibreTexts",
    "issue": "2025.01",
-   "created_at": "2026-07-28T00:30:51",
+   "created_at": "2026-11-20T00:52:46",
    "created_by": "Luis Maina",
    "contents": {
-    "documents": 20926,
-    "words": 23336249,
+    "documents": 20169,
+    "words": 23060205,
     "language": "eng",
     "adapter": "libretexts",
     "source": "libretexts.org_en_med_2025-01.zim",
@@ -200,15 +160,15 @@
    "film": [
     {
      "role": "core",
-     "file": "film/libretexts-med.codex.db",
-     "bytes": 112107520,
-     "sha256": "c232b2b62f8868fbbbb81ff05ff5a1add4a3c270000c68015187c15f7fded55b"
+     "file": "libretexts-med.codex.db",
+     "bytes": 109973504,
+     "sha256": "0f115c5625364151497e4005e4aa4a2623e7482b639376f36ce0c713606f75bc"
     },
     {
      "role": "deep",
-     "file": "film/libretexts-med.codex-deep.db",
-     "bytes": 59314176,
-     "sha256": "b39c755543e02095bc31e9f950a9de519825c72cd44d1d507647c86bfcb8eca8"
+     "file": "libretexts-med.codex-deep.db",
+     "bytes": 58863616,
+     "sha256": "419b485231c4e9ac70322c6c958a4030142f2b35d6e880d2c84265bc1d3654fa"
     }
    ],
    "cover": {
@@ -226,15 +186,16 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-6d3d60ede838",
+   "cassette_id": "shelf-352e0bb7b4fce879ee48",
+   "sealed": false,
    "name": "medlineplus",
    "title": "MedlinePlus",
    "issue": "2025.01",
-   "created_at": "2026-07-27T22:55:52",
+   "created_at": "2026-11-20T01:27:43",
    "created_by": "Luis Maina",
    "contents": {
-    "documents": 14932,
-    "words": 11227348,
+    "documents": 14930,
+    "words": 11230880,
     "language": "eng",
     "adapter": "generic",
     "source": "medlineplus.gov_en_all_2025-01.zim",
@@ -244,15 +205,15 @@
    "film": [
     {
      "role": "core",
-     "file": "film/medlineplus.codex.db",
-     "bytes": 54689792,
-     "sha256": "9eddda90065fcdeba61334bfd3928c417e3aef1cb8bcd1656f58acfb043e97ec"
+     "file": "medlineplus.codex.db",
+     "bytes": 54870016,
+     "sha256": "23bbc10b22f5ff2e99696084b71bd853163742ada00797a4e69e80900a966a2f"
     },
     {
      "role": "deep",
-     "file": "film/medlineplus.codex-deep.db",
-     "bytes": 34631680,
-     "sha256": "3c6b0f54396f4b445928d82ac226420514fb7d9e53eeefc6876119d322fc3fa7"
+     "file": "medlineplus.codex-deep.db",
+     "bytes": 34541568,
+     "sha256": "3a587bbfe2d0bda9ecf6a3a8eaccea65c8cfceff1be9f34fbdeea09684904052"
     }
    ],
    "cover": {
@@ -270,7 +231,8 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-63d628c85a18",
+   "cassette_id": "shelf-bda5576e746b8030e37a",
+   "sealed": false,
    "name": "wikivoyage-europe",
    "title": "Wikivoyage - Europe",
    "issue": "2026.03",
@@ -288,20 +250,20 @@
    "film": [
     {
      "role": "core",
-     "file": "film/wikivoyage-europe.codex.db",
+     "file": "wikivoyage-europe.codex.db",
      "bytes": 51335168,
      "sha256": "1239cae2abae753a5302201c54217cd73934b57655dd624fc199879eb2d688b5"
     },
     {
      "role": "deep",
-     "file": "film/wikivoyage-europe.codex-deep.db",
+     "file": "wikivoyage-europe.codex-deep.db",
      "bytes": 40947712,
      "sha256": "669aa1a61d1cc547a91628bc45e19d0e4696db7303d2291c3c41aeedbe2ecd40"
     }
    ],
    "cover": {
-    "hero_slug": "heart",
-    "subject": "Heart",
+    "hero_slug": "human-eye",
+    "subject": "Human eye",
     "palette": "ink"
    },
    "licence": {
@@ -314,59 +276,16 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-90de95c4ec70",
-   "name": "wikipedia-climate",
-   "title": "Climate change by Wikipedia",
-   "issue": "2026.04",
-   "created_at": "2026-07-27T21:54:16",
-   "created_by": "Luis Maina",
-   "contents": {
-    "documents": 3733,
-    "words": 6620529,
-    "language": "eng",
-    "adapter": "wikipedia",
-    "source": "wikipedia_en_climate-change_nopic_2026-04.zim",
-    "source_date": "2026-04-06",
-    "schema": 1
-   },
-   "film": [
-    {
-     "role": "core",
-     "file": "film/wikipedia-climate.codex.db",
-     "bytes": 28127232,
-     "sha256": "51e8477519a16f711bdec1aeca8deb3cd1feddc635ab4e43b927f8c4d4d74289"
-    },
-    {
-     "role": "deep",
-     "file": "film/wikipedia-climate.codex-deep.db",
-     "bytes": 21159936,
-     "sha256": "42867639f271a0c4d2f3a286c21439e0259b98c521f92ecf3ff0e35d66f44a8e"
-    }
-   ],
-   "cover": {
-    "hero_slug": "heart",
-    "subject": "Heart",
-    "palette": "wine"
-   },
-   "licence": {
-    "name": "CC BY-SA 4.0",
-    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
-    "note": "Verify before redistribution"
-   },
-   "manifest_sha256": null,
-   "_mock": true
-  },
-  {
-   "schema": 1,
-   "cassette_id": "mock-1fcc3f62711c",
+   "cassette_id": "shelf-ba52ccad3fd5546b3750",
+   "sealed": false,
    "name": "ready-gov",
    "title": "Ready.gov",
    "issue": "2024.12",
-   "created_at": "2026-07-27T22:54:43",
+   "created_at": "2026-11-20T00:52:16",
    "created_by": "Luis Maina",
    "contents": {
-    "documents": 2006,
-    "words": 1113860,
+    "documents": 2002,
+    "words": 1116766,
     "language": "eng",
     "adapter": "generic",
     "source": "www.ready.gov_en_2024-12.zim",
@@ -376,15 +295,15 @@
    "film": [
     {
      "role": "core",
-     "file": "film/ready-gov.codex.db",
-     "bytes": 7610368,
-     "sha256": "63e9b033a7dc86f7d61c24a4f1dc3d4ed6ffae6db59f47e04a97c237b288ef89"
+     "file": "ready-gov.codex.db",
+     "bytes": 7282688,
+     "sha256": "dfe44cdd54c7e6d650426e50ef9f2f3b7f079502d5dd7a5ed66a40df8888e33a"
     },
     {
      "role": "deep",
-     "file": "film/ready-gov.codex-deep.db",
-     "bytes": 7319552,
-     "sha256": "26d7e3d6983afcca6d1b04e4c373eda6e9879617297cc5c183c702c7fc095f0c"
+     "file": "ready-gov.codex-deep.db",
+     "bytes": 7225344,
+     "sha256": "a8e83086e5d25d724ec9d2dd04d398a60ab731b0e20df98617fd69acdacc1994"
     }
    ],
    "cover": {
@@ -402,7 +321,8 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-10021ddc9af5",
+   "cassette_id": "shelf-293cc10b1e12e806ce48",
+   "sealed": false,
    "name": "nhs-medicines",
    "title": "NHS' Medicines A to Z",
    "issue": "2025.12",
@@ -420,13 +340,13 @@
    "film": [
     {
      "role": "core",
-     "file": "film/nhs-medicines.codex.db",
+     "file": "nhs-medicines.codex.db",
      "bytes": 5787648,
      "sha256": "bd4ad53e5cde00f2b6affad350b700b50d8c5a42e100b564dd8663889f030186"
     },
     {
      "role": "deep",
-     "file": "film/nhs-medicines.codex-deep.db",
+     "file": "nhs-medicines.codex-deep.db",
      "bytes": 4591616,
      "sha256": "a13192a4451476392e2d7ba5cca7a55bb56d4da401cdf698db88b96067abc17c"
     }
@@ -446,51 +366,8 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-53b60df6499e",
-   "name": "mdn",
-   "title": "MDN Web Docs",
-   "issue": "2026.07",
-   "created_at": "2026-07-27T22:54:26",
-   "created_by": "Luis Maina",
-   "contents": {
-    "documents": 1231,
-    "words": 694406,
-    "language": "eng",
-    "adapter": "generic",
-    "source": "developer.mozilla.org_bc74bccb.zim",
-    "source_date": "2026-07-27",
-    "schema": 1
-   },
-   "film": [
-    {
-     "role": "core",
-     "file": "film/mdn.codex.db",
-     "bytes": 5124096,
-     "sha256": "555989917ea8ae81925145aeea5abe686951be454cc747d84bf9137bbf1782cb"
-    },
-    {
-     "role": "deep",
-     "file": "film/mdn.codex-deep.db",
-     "bytes": 4120576,
-     "sha256": "04bc4ea7d53775bd07663e6e7c14364facfe950c0d1b7a0694721f77faa9e785"
-    }
-   ],
-   "cover": {
-    "hero_slug": null,
-    "subject": "",
-    "palette": "moss"
-   },
-   "licence": {
-    "name": "CC BY-SA 2.5",
-    "url": "https://creativecommons.org/licenses/by-sa/2.5/",
-    "note": "Verify before redistribution"
-   },
-   "manifest_sha256": null,
-   "_mock": true
-  },
-  {
-   "schema": 1,
-   "cassette_id": "mock-41a2c313ed26",
+   "cassette_id": "shelf-13b92934e35a0bc38316",
+   "sealed": false,
    "name": "military-medicine",
    "title": "Military Medicine",
    "issue": "2026.05",
@@ -508,13 +385,13 @@
    "film": [
     {
      "role": "core",
-     "file": "film/military-medicine.codex.db",
+     "file": "military-medicine.codex.db",
      "bytes": 7065600,
      "sha256": "1bf3694b254f93abe5d1b839b5202ceeda23f0fac1f4d2c01a2deb524c6e1185"
     },
     {
      "role": "deep",
-     "file": "film/military-medicine.codex-deep.db",
+     "file": "military-medicine.codex-deep.db",
      "bytes": 8380416,
      "sha256": "866ad63d65814834e6df73c291a78843aeaa11335752475b905d0d263a248251"
     }
@@ -534,43 +411,44 @@
   },
   {
    "schema": 1,
-   "cassette_id": "mock-35401af68de5",
-   "name": "wikipedia-100",
-   "title": "Wikipedia 100",
-   "issue": "2026.04",
-   "created_at": "2026-07-27T21:56:33",
+   "cassette_id": "shelf-a0b9c4109a1bde2f9a09",
+   "sealed": false,
+   "name": "mdn",
+   "title": "MDN Web Docs",
+   "issue": "2026.07",
+   "created_at": "2026-11-20T00:51:42",
    "created_by": "Luis Maina",
    "contents": {
-    "documents": 102,
-    "words": 968286,
+    "documents": 1082,
+    "words": 658281,
     "language": "eng",
-    "adapter": "wikipedia",
-    "source": "wikipedia_en_100_maxi_2026-04.zim",
-    "source_date": "2026-04-15",
+    "adapter": "generic",
+    "source": "developer.mozilla.org_bc74bccb.zim",
+    "source_date": "2026-07-27",
     "schema": 1
    },
    "film": [
     {
      "role": "core",
-     "file": "film/wikipedia-100.codex.db",
-     "bytes": 3059712,
-     "sha256": "93eea818fa142d4159ae65c1d34efbd5b11f01538785a09711c43d020f2e023b"
+     "file": "mdn.codex.db",
+     "bytes": 4038656,
+     "sha256": "6b32a5d8487af450e98e3570cf529acb7fbd364d9e0e0abc9138044e4f3aab25"
     },
     {
      "role": "deep",
-     "file": "film/wikipedia-100.codex-deep.db",
-     "bytes": 4399104,
-     "sha256": "75fbf890d8c36af5bc7e793b46a670b4a2212c331ad9b1187894d47a99c16b88"
+     "file": "mdn.codex-deep.db",
+     "bytes": 3719168,
+     "sha256": "0b134f67b563689670dfef277876ef515e545a6631124c0bd8b457423a956b52"
     }
    ],
    "cover": {
-    "hero_slug": "heart",
-    "subject": "Heart",
+    "hero_slug": null,
+    "subject": "",
     "palette": "moss"
    },
    "licence": {
-    "name": "CC BY-SA 4.0",
-    "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "name": "CC BY-SA 2.5",
+    "url": "https://creativecommons.org/licenses/by-sa/2.5/",
     "note": "Verify before redistribution"
    },
    "manifest_sha256": null,

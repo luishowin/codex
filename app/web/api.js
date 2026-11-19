@@ -22,6 +22,15 @@ export const api = {
   doc: (codex, id) => j(
     `/api/doc?codex=${encodeURIComponent(codex)}&id=${encodeURIComponent(id)}`),
 
+  /* The shelf's shape. `mode: 'flat'` means the A–Z browse is the right view;
+     `contents` means the codex is a shelf of books and this is its table of
+     contents. `root` asks for one container's children, in the film's order. */
+  index: (codex, { prefix = '', root = '', after = '', n = 200 } = {}) => j(
+    `/api/index?codex=${encodeURIComponent(codex)}&n=${n}` +
+    (prefix ? `&prefix=${encodeURIComponent(prefix)}` : '') +
+    (root ? `&root=${encodeURIComponent(root)}` : '') +
+    (after ? `&after=${encodeURIComponent(after)}` : '')),
+
   /* Art is optional by design: a missing art.db degrades to no picture,
      never to an error. */
   art: (codex, id) => j(

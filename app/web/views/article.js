@@ -37,6 +37,22 @@ function table(s, id) {
   return `${s.h ? `<h2 id="s${id}">${esc(s.h)}</h2>` : ''}<table>${head}<tbody>${body}</tbody></table>`;
 }
 
+/* Where this page sits in its book. Only shown when the film says it belongs to
+   a container with siblings -- on a flat codex there is no "next section". */
+function navHTML(d, route) {
+  const nav = d.nav;
+  if (!nav || nav.total < 2) return '';
+  const link = (step, back) => step
+    ? `<button class="bn${back ? '' : ' r'}" data-open="${esc(route.codex)}/${step.id}">
+         <span>${back ? '← Previous' : 'Next →'}</span><b>${esc(step.title)}</b></button>`
+    : `<span class="bn${back ? '' : ' r'} off"></span>`;
+  return `<nav class="booknav">
+    ${link(nav.prev, true)}
+    <span class="bp">${nav.position} of ${num(nav.total)}</span>
+    ${link(nav.next, false)}
+  </nav>`;
+}
+
 export async function mount(el, route, ctx) {
   el.innerHTML = '<div class="art"><p class="loading">Opening…</p></div>';
 
@@ -87,6 +103,7 @@ export async function mount(el, route, ctx) {
   el.innerHTML = `<article class="art${ctx.state.readerFont === 'serif' ? ' serif' : ''}" data-id="${d.id}">
     <div class="src">
       <span>${esc(ctx.codexTitle(route.codex))}</span><span>·</span>
+      ${d.context ? `<span>${esc(d.context)}</span><span>·</span>` : ''}
       <span>${minutes(d.word_count)} min read</span><span>·</span>
       <span>${num(d.word_count)} words</span><span>·</span><span>Offline</span>
     </div>
@@ -100,6 +117,7 @@ export async function mount(el, route, ctx) {
         ? ' <span style="font-weight:400;font-size:12px;color:var(--mute)">(similar)</span>' : ''}</h2>
       <div class="rel">${d.related.map(x => `<button data-open="${esc(route.codex)}/${x.id}">${esc(x.title)}${
         x.context ? ` <span style="color:var(--mute)">· ${esc(x.context)}</span>` : ''}</button>`).join('')}</div>` : ''}
+    ${navHTML(d, route)}
     <div class="end"><span>${esc(d.path || 'Local film')}</span><span>Read from a local codex</span></div>
   </article>`;
 

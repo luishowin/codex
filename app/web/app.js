@@ -70,7 +70,7 @@ function setTheme(t) {
 const key = r => r.k === 'article' ? `a/${r.codex}/${r.id}`
   : r.k === 'cassette' ? `c/${r.name}`
   : r.k === 'search' ? `search/${r.q}`
-  : r.k === 'browse' ? `browse/${r.codex}/${r.letter || 'A'}`
+  : r.k === 'browse' ? `browse/${r.codex}/${r.letter || 'A'}${r.root ? `/${r.root}` : ''}`
   : r.k;
 
 function toHash(r) {
@@ -79,7 +79,7 @@ function toHash(r) {
     case 'article': return `#/a/${e(r.codex)}/${r.id}`;
     case 'cassette': return `#/c/${e(r.name)}`;
     case 'search': return `#/search/${e(r.q)}`;
-    case 'browse': return `#/browse/${e(r.codex)}/${e(r.letter || 'A')}`;
+    case 'browse': return `#/browse/${e(r.codex)}/${e(r.letter || 'A')}${r.root ? `/${r.root}` : ''}`;
     case 'library': return '#/library';
     case 'settings': return '#/settings';
     default: return '#/';
@@ -95,7 +95,9 @@ function parseHash(h) {
   if (p[0] === 'c' && p[1]) return { k: 'cassette', name: p[1] };
   if (p[0] === 'a' && p[1] && p[2]) return { k: 'article', codex: p[1], id: +p[2] };
   if (p[0] === 'search' && p[1]) return { k: 'search', q: p[1] };
-  if (p[0] === 'browse' && p[1]) return { k: 'browse', codex: p[1], letter: p[2] || 'A' };
+  /* The optional fourth segment is a container to open on arrival: a book,
+     a device, a chapter. Same route, deeper state. */
+  if (p[0] === 'browse' && p[1]) return { k: 'browse', codex: p[1], letter: p[2] || 'A', root: +(p[3] || 0) };
   return { k: 'home' };
 }
 
@@ -167,7 +169,7 @@ function navigate(route, o = {}) {
     S.hi = S.hist.length - 1;
   }
   S.route = route;
-  if (route.k === 'article') store.set('last', route);
+  if (route.k === 'article') store.set('last', { ...route, stamp: filmStamp(route.codex) });
   renderRoute();
   const h = toHash(route);
   if (location.hash !== h) location.hash = h;
@@ -219,7 +221,8 @@ function toggleMark() {
   const at = S.marks.findIndex(m => `${m.codex}/${m.id}` === k);
   if (at >= 0) { S.marks.splice(at, 1); toast('Removed from saved'); }
   else {
-    S.marks.unshift({ ...S.route, title: (S.doc && S.doc.title) || 'Article' });
+    S.marks.unshift({ ...S.route, title: (S.doc && S.doc.title) || 'Article',
+                      stamp: filmStamp(S.route.codex) });
     toast('Saved for later');
   }
   store.set('marks', S.marks);
@@ -231,6 +234,7 @@ function afterArticle(d, route) {
   const entry = {
     codex: route.codex, id: route.id, title: d.title,
     words: d.word_count, codexTitle: codexTitle(route.codex),
+    stamp: filmStamp(route.codex),
   };
   S.recent = [entry, ...S.recent.filter(r => !(r.codex === route.codex && r.id === route.id))].slice(0, 8);
   store.set('recent', S.recent);
@@ -470,8 +474,40 @@ function moveResult(d) {
 
 function openResult(h) {
   if (!h) return;
+  /* A contents row that is a container toggles instead of navigating: Enter on
+     "Division and Brigade Surgeons' Handbook" should open the book, not the
+     book's stub page. Leaves behave exactly as before. */
+  if (h.toggle) {
+    viewEl.querySelector(`[data-row="${h.toggle}"]`)?.click();
+    return;
+  }
   closeSearch(); qEl.blur();
   navigate({ k: 'article', codex: h.codex, id: h.id });
+}
+
+/* ---------- local state vs. the film ----------
+
+   A rebuilt codex reassigns document ids (dropping the 149 MDN shells shifted
+   every id after them), so a stored {codex, id} can quietly point at a
+   different page. Every saved entry therefore carries the film it came from,
+   and a mismatch is dropped rather than opened into the wrong document. */
+
+function filmStamp(name) {
+  const c = S.catalog.find(x => x.name === name);
+  return c ? `${c.built || ''}|${c.docs || 0}` : '';
+}
+
+function pruneLocal() {
+  if (!S.catalog.length) return;      /* offline: cannot judge, keep everything */
+  const ok = e => !!(e && e.codex && e.stamp) && e.stamp === filmStamp(e.codex);
+  const before = S.recent.length + S.marks.length;
+  S.recent = S.recent.filter(ok);
+  S.marks = S.marks.filter(ok);
+  if (S.recent.length + S.marks.length !== before) {
+    store.set('recent', S.recent);
+    store.set('marks', S.marks);
+    toast('Reading list reset — that film was rebuilt');
+  }
 }
 
 /* ---------- view delegation ---------- */
@@ -835,6 +871,9 @@ async function boot() {
     S.cassettes = shelf.value.cassettes || [];
     S.libraryMock = shelf.value.mock !== false;
   }
+  /* Before restoring the last article or rendering anything: anything saved
+     against a film that has since been rebuilt is no longer that document. */
+  pruneLocal();
 
   /* /read permalink wins over the stored route. */
   const params = new URLSearchParams(location.search);
@@ -849,7 +888,9 @@ async function boot() {
     const last = store.get('last', null);
     S.hist = [{ k: 'home' }];
     S.hi = 0;
-    if (last && last.codex && last.id) S.route = last;
+    if (last && last.codex && last.id && last.stamp === filmStamp(last.codex)) {
+      S.route = { k: 'article', codex: last.codex, id: last.id };
+    }
   }
 
   await renderRoute();
