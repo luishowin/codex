@@ -21,7 +21,7 @@ import zlib
 from contextlib import contextmanager
 from pathlib import Path
 
-from .model import reflow
+from .model import block_text, reflow
 from .schema import FLAG_IMAGE_DEPENDENT
 
 # Longest a single search may run before it is aborted. No query on a healthy
@@ -125,14 +125,14 @@ class Searcher:
 
     # -- connections ------------------------------------------------------
     def _connect(self) -> sqlite3.Connection:
-        con = sqlite3.connect(f"file:{self.core_path}?mode=ro", uri=True,
+        con = sqlite3.connect(self.core_path.resolve().as_uri() + "?mode=ro", uri=True,
                               check_same_thread=False)
         con.row_factory = sqlite3.Row
         con.execute("PRAGMA temp_store=MEMORY")
         con.execute("PRAGMA cache_size=-131072")
         if self.deep_path:
             con.execute("ATTACH DATABASE ? AS deep",
-                        (f"file:{self.deep_path}?mode=ro",))
+                        (Path(self.deep_path).resolve().as_uri() + "?mode=ro",))
         # Fires every N virtual-machine instructions; returning non-zero aborts
         # the statement. This is the backstop that keeps one pathological query
         # from occupying a thread indefinitely.
@@ -633,7 +633,9 @@ class Searcher:
         # every consumer gets clean prose -- the reader, the CLI, and anything
         # later feeding this text to a model -- rather than each fixing it again.
         for s in sections:
-            if "t" in s:
+            if s.get("k") == "rich":
+                s["t"] = "\n".join(map(block_text, s["blocks"]))
+            elif "t" in s:
                 s["t"] = reflow(s["t"])
         return {
             "id": r["id"], "path": r["path"], "title": r["title"],

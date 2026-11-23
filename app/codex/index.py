@@ -14,6 +14,7 @@ import time
 import zlib
 
 from .build import log
+from .model import block_text
 
 BATCH = 20_000
 
@@ -101,6 +102,8 @@ def _body_text(dec, body: bytes | None) -> str:
                 parts.append(" ".join(s["headers"]))
             for row in s.get("rows") or ():
                 parts.append(" ".join(row))
+        elif s.get("k") == "rich":
+            parts.extend(map(block_text, s["blocks"]))
         elif s.get("t"):
             parts.append(s["t"])
     return "\n".join(parts)

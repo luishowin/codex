@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "reading-room",
+  "title": "The reading room",
+  "books": [
+    {
+      "id": "wikipedia",
+      "file": "wikipedia.codex.db"
+    },
+    {
+      "id": "tea",
+      "file": "tea.codex.db"
+    }
+  ]
+}

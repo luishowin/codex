@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Family library · Codex</title>
+    <link rel="stylesheet" href="/static/reader/reader.css" />
+    <link rel="icon" href="/static/favicon.svg" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <a class="cell brand" href="/reader" aria-label="Codex home">Codex</a>
+      <div id="search-slot"></div>
+      <nav class="cell tools" aria-label="Quick access">
+        <a href="/reader?desk=1">Reading desk</a>
+        <button id="theme" type="button">Theme</button>
+      </nav>
+    </header>
+    <nav id="crumb" aria-label="Library navigation"></nav>
+    <main id="main" tabindex="-1"><p>Opening library…</p></main>
+    <dialog id="notes">
+      <form id="noteform">
+        <h2>Request an amendment</h2>
+        <p id="notecontext"></p>
+        <blockquote id="quote"></blockquote>
+        <label
+          >What needs correcting?<textarea
+            required
+            maxlength="10000"
+            rows="5"
+          ></textarea>
+        </label>
+        <div class="buttons">
+          <button type="button" id="cancel">Cancel</button
+          ><button type="submit">Save request</button>
+        </div>
+      </form>
+    </dialog>
+    <p id="status" role="status"></p>
+    <script type="module" src="/static/reader/reader.js"></script>
+  </body>
+</html>

@@ -27,7 +27,7 @@ from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from codex import cassette, merge
+from codex import cassette, merge, reader
 from codex.art import ArtStore
 from codex.paths import (art_db_path, codex_globs, data_dir, hidden_rolls,
                          shelf_path, source_weights)
@@ -272,7 +272,7 @@ class Handler(BaseHTTPRequestHandler):
         one = lambda k, d=None: (qs.get(k) or [d])[0]
 
         if u.path in ("/", "/index.html"):
-            return self._static("index.html")
+            return self._static("index.html" if CODEXES else "reader/index.html")
         if u.path.startswith("/static/"):
             return self._static(u.path[len("/static/"):])
         # Permalink for one document. Serves the same UI shell; the client
@@ -280,6 +280,13 @@ class Handler(BaseHTTPRequestHandler):
         # middle- or Ctrl-clicked hit lands on the article in a new tab.
         if u.path == "/read":
             return self._static("index.html")
+
+        if u.path == "/reader":
+            return self._static("reader/index.html")
+        if u.path == "/api/reader":
+            result, status = reader.request(
+                {k: v[0] for k, v in qs.items()}, data_dir() / "cassettes", CODEXES, RAW, META)
+            return self._json(result, status)
 
         if u.path == "/api/health":
             return self._json({"ok": True, "api": 1,
@@ -468,8 +475,8 @@ def main() -> int:
         print(f"  shelf: {len(hidden)} roll(s) on disk but not loaded: "
               f"{', '.join(sorted(hidden))}")
     load_codexes(patterns, hidden)
-    if not CODEXES:
-        print("no codexes loaded", file=sys.stderr)
+    if args.codex and not CODEXES:
+        print("no requested codexes loaded", file=sys.stderr)
         return 1
 
     global ART

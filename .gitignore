@@ -20,3 +20,9 @@ _work/
 *.codex.db*
 *.codex-deep.db*
 art.db*
+
+# Portable review edition distributed with the reader. Journal files stay ignored.
+!data/cassettes/reading-room/wikipedia.codex.db
+!data/cassettes/reading-room/wikipedia.codex-deep.db
+!data/cassettes/reading-room/tea.codex.db
+!data/cassettes/reading-room/tea.codex-deep.db

@@ -14,7 +14,7 @@ export function render(route, ctx) {
     <div class="lib-head">
       <div>
         <h1>Library</h1>
-        <p>Each codex is a cassette: film, an index, a cover and a record of where it came from.</p>
+        <p><a href="/reader">Open the family library →</a></p>
       </div>
       <div class="stat">${num(list.length)} cassettes<br>${num(docs)} documents · ${bytes(disk)}</div>
     </div>

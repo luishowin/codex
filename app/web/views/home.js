@@ -27,7 +27,8 @@ export function render(route, ctx) {
     <p class="cx-tag">Your offline library. Everything here is read from film on your own machine — no account, no network.</p>
     <button class="cx-big" data-act="focus">${ctx.icon('search')}<span>Search your library</span><kbd>/</kbd></button>
     <div class="cx-quick">
-      <button class="chip" data-act="lib">Library</button>
+      <a class="chip" href="/reader">Family library</a>
+      <button class="chip" data-act="lib">Reference shelf</button>
       <button class="chip" data-act="settings">Settings</button>
       <button class="chip" data-act="theme">Light / dark</button>
     </div>

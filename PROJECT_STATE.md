@@ -1,5 +1,25 @@
 # PROJECT_STATE.md
 
+## Family reader checkpoint · 2026-11-24
+
+The Wikipedia specimen is approved for reading quality. The family web reader
+opens portable multi-book cassettes and the existing reference shelf at
+`/reader`. Its library follows the supplied home-page design. Articles use
+serif prose, local fonts and edition-specific bookmarks and amendment requests.
+
+The review cassette contains 19 Wikipedia entries from the June 2026 archive
+and a separate tea specimen. Browser checks covered desktop and phone layouts,
+keyboard use, search, offline glyphs, exports, printing, cassette removal,
+reinsertion and saved locations across restarts. The Python suite passed
+241 tests before the final visual changes, which were checked in the browser.
+
+The pilot reconciled 1,536 sampled archive entries and included 593 articles.
+Across 585 matched articles, candidate compressed bodies used 2.56 times the
+existing body space. The 30 GiB combined target remains a preference. Next,
+integrate the approved format into the production streaming builder and rerun
+the same pilot before starting a full build. See [the reader guide](READER.md)
+for reproduction commands, format details and measurements.
+
 Current implementation state of Codex. Updated 2026-11-20 after the shelf
 repair (container contents, cross-codex merge, capture hygiene, book
 navigation, stamped client state, `/api/library`).

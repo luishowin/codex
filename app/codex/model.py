@@ -21,6 +21,19 @@ _WS = re.compile(r"[ \t ​]+")
 _NL = re.compile(r"\n\s*\n\s*(\n\s*)+")
 _EDGE = re.compile(r"^[ \t]+|[ \t]+$", re.MULTILINE)
 
+def block_text(node) -> str:
+    """Plain text of a structured article block, for indexing and older clients."""
+    if isinstance(node, str):
+        return node
+    tag = node["tag"]
+    text = "".join(block_text(child) for child in node["children"])
+    if tag in {"th", "td"}:
+        return text + " "
+    if tag in {"p", "h2", "h3", "h4", "h5", "h6", "tr", "li", "br", "blockquote", "caption", "dt", "dd", "pre"}:
+        return text + "\n"
+    return text
+
+
 # -- reflow -----------------------------------------------------------------
 
 _NL_RUN = re.compile(r"\n+")

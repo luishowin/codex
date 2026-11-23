@@ -3,6 +3,8 @@
 Rebuilds ZIM archives into a compact, fast, portable knowledge store that humans
 and language models can both search.
 
+Open the [family reader and Wikipedia specimen](READER.md) at `/reader`.
+
 Source archives are never modified — opened read-only and streamed.
 
 ---
